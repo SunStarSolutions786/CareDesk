@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CareDesk · Appointment Booking Register</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%230E7C7B%22/><path d=%22M28 20h44a6 6 0 0 1 6 6v46a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V26a6 6 0 0 1 6-6Z%22 fill=%22none%22 stroke=%22white%22 stroke-width=%226%22/><path d=%22M22 40h56M36 14v14M64 14v14%22 stroke=%22white%22 stroke-width=%226%22 stroke-linecap=%22round%22/><path d=%22M35 58l9 9 19-19%22 stroke=%22white%22 stroke-width=%227%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   CAREDESK DESIGN SYSTEM — "Clinic Ledger"
+   Same premium clinical-teal + paper foundation as the CXDX
+   reference app. Signature motif changed from an ECG pulse to a
+   drawn calendar-check (booking / confirmed-visit), since this
+   app is about scheduling, not prescription analysis.
+   ============================================================ */
+:root{
+  --ink-900:#0B1F26;
+  --ink-800:#122A31;
+  --ink-700:#1C3438;
+  --teal-700:#0B6665;
+  --teal-600:#0E7C7B;
+  --teal-500:#14948F;
+  --teal-400:#3FB0AB;
+  --teal-100:#DCF0EE;
+  --teal-50:#EFF8F7;
+  --green-600:#178A56;
+  --green-500:#1FAA6D;
+  --green-100:#DEF3E8;
+  --amber-600:#B5620D;
+  --amber-500:#DE7F1E;
+  --amber-100:#FBEAD4;
+  --red-600:#DC2626;
+  --red-100:#FDE4E4;
+  --violet-600:#6D4AAE;
+  --violet-500:#8562C7;
+  --violet-100:#EDE7F9;
+  --blue-600:#1D5FBF;
+  --blue-500:#2E77E0;
+  --blue-100:#E1EBFC;
+  --paper-50:#F5F8F7;
+  --paper-0:#FFFFFF;
+  --line-200:#DCE6E4;
+  --line-100:#EAF1EF;
+  --slate-600:#3F5257;
+  --slate-500:#5B7278;
+  --slate-400:#7E9297;
+  --slate-300:#A7B8BB;
+  --radius-sm:8px;
+  --radius-md:14px;
+  --radius-lg:22px;
+  --shadow-sm:0 1px 3px rgba(11,31,38,0.07);
+  --shadow-md:0 6px 20px rgba(11,31,38,0.08);
+  --shadow-lg:0 16px 40px rgba(11,31,38,0.14);
+  --ease:cubic-bezier(.4,0,.2,1);
+  --transition:200ms var(--ease);
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  font-family:var(--font-body);
+  background:var(--paper-50);
+  color:var(--ink-900);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+img,svg{display:block;max-width:100%;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;font-size:14px;}
+a{color:inherit;}
+::selection{background:var(--teal-100);color:var(--teal-700);}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:0.001ms !important;animation-iteration-count:1 !important;transition-duration:0.001ms !important;}
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--line-200);border-radius:8px;}
+::-webkit-scrollbar-thumb:hover{background:var(--slate-300);}
+
+/* ---------- Utility ---------- */
+.hidden{display:none !important;}
+.mono{font-family:var(--font-mono);}
+.u-flex{display:flex;}
+.u-between{display:flex;align-items:center;justify-content:space-between;}
+.u-gap-8{gap:8px;} .u-gap-12{gap:12px;}
+.u-muted{color:var(--slate-500);}
+.u-center{display:flex;align-items:center;justify-content:center;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ============================================================
+   BRAND MARK — signature motif, reused sparingly.
+   A calendar tile draws itself in, then a check tick confirms it —
+   read as "date set, booking confirmed" on load.
+   ============================================================ */
+.brand-logo{display:inline-flex;align-items:center;gap:10px;}
+.brand-logo .mark{
+  width:40px;height:40px;border-radius:11px;
+  background:linear-gradient(155deg,var(--teal-600),var(--ink-800));
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--shadow-sm);flex-shrink:0;
+}
+.brand-logo .mark svg{width:23px;height:23px;overflow:visible;}
+.brand-logo .mark .cal-body{fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:100;stroke-dashoffset:100;animation:draw-cal 0.9s var(--ease) 0.1s forwards;}
+.brand-logo .mark .cal-check{fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:20;stroke-dashoffset:20;animation:draw-check 0.35s var(--ease) 0.85s forwards;}
+@keyframes draw-cal{to{stroke-dashoffset:0;}}
+@keyframes draw-check{to{stroke-dashoffset:0;}}
+.brand-logo .wordmark{
+  font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:0.5px;
+  background:linear-gradient(100deg,var(--ink-900) 30%,var(--teal-600) 70%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.brand-logo.on-dark .wordmark{
+  background:linear-gradient(100deg,#fff 30%,var(--teal-400) 75%);
+  -webkit-background-clip:text;background-clip:text;
+}
+.brand-logo .tagline{font-size:11px;color:var(--slate-400);letter-spacing:0.3px;margin-top:1px;}
+
+/* traveling highlight dot orbiting a soft arc, used on login hero — replaces the old ECG trace
+   with motion that reads as "always scheduling / always on". */
+.brand-trace{position:relative;width:100%;max-width:360px;height:34px;margin:0 auto;}
+.brand-trace svg{width:100%;height:100%;overflow:visible;}
+.brand-trace path{
+  fill:none;stroke:var(--teal-500);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:6 460;stroke-dashoffset:0;
+  animation:trace-run 3.2s linear infinite;
+  opacity:0.85;
+}
+.brand-trace path.ghost{stroke:var(--line-200);stroke-dasharray:none;opacity:1;animation:none;stroke-width:1.5;}
+@keyframes trace-run{
+  0%{stroke-dasharray:6 460;stroke-dashoffset:0;}
+  85%{stroke-dasharray:6 460;stroke-dashoffset:-460;}
+  100%{stroke-dasharray:6 460;stroke-dashoffset:-466;}
+}
+
+/* Compact traveling-trace loading state for buttons — same technique, sized to sit inline. */
+.btn-trace{display:inline-flex;align-items:center;}
+.btn-trace svg{width:44px;height:16px;overflow:visible;}
+.btn-trace path{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.btn-trace path.ghost{stroke:var(--teal-100);}
+.btn-trace path.run{stroke:var(--teal-700);stroke-dasharray:4 76;stroke-dashoffset:0;animation:btn-trace-run 1.4s linear infinite;}
+@keyframes btn-trace-run{
+  0%{stroke-dashoffset:0;}
+  85%{stroke-dashoffset:-76;}
+  100%{stroke-dashoffset:-80;}
+}
+@media (prefers-reduced-motion: reduce){.btn-trace path.run{animation:none;stroke-dasharray:none;}}
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
+#login-screen{
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px;position:relative;overflow:hidden;background:var(--paper-50);
+}
+#login-screen::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(600px 300px at 15% 0%, var(--teal-100) 0%, transparent 60%),
+    radial-gradient(500px 260px at 100% 100%, var(--amber-100) 0%, transparent 55%);
+  opacity:0.7;pointer-events:none;
+}
+.login-hero{position:relative;text-align:center;margin-bottom:28px;animation:rise-in 0.7s var(--ease) both;}
+.login-hero .brand-logo{justify-content:center;transform:scale(1.15);margin-bottom:10px;}
+.login-hero h1{font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--slate-500);letter-spacing:0.2px;margin-top:6px;}
+.login-card{
+  position:relative;width:100%;max-width:388px;background:var(--paper-0);
+  border:1px solid var(--line-200);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);
+  padding:32px 30px 28px;animation:rise-in 0.7s var(--ease) 0.1s both;
+}
+@keyframes rise-in{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.login-card .field{margin-bottom:16px;}
+.login-card label{display:block;font-size:12.5px;font-weight:600;color:var(--slate-600);margin-bottom:6px;letter-spacing:0.15px;}
+.login-card input{
+  width:100%;padding:11px 13px;border:1.5px solid var(--line-200);border-radius:var(--radius-sm);
+  background:var(--paper-50);transition:border-color var(--transition),background var(--transition);
+}
+.login-card input:focus{outline:none;border-color:var(--teal-500);background:var(--paper-0);}
+#login-error{
+  display:none;background:var(--red-100);color:var(--red-600);font-size:13px;font-weight:500;
+  padding:10px 12px;border-radius:var(--radius-sm);margin-bottom:14px;
+}
+.login-foot{text-align:center;margin-top:22px;}
+.login-foot .brand-trace{opacity:0.8;}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-size:14px;font-weight:600;border-radius:var(--radius-sm);border:1.5px solid transparent;
+  padding:10px 18px;transition:transform 120ms var(--ease),box-shadow var(--transition),background var(--transition),border-color var(--transition),opacity var(--transition);
+  white-space:nowrap;
+}
+.btn:active{transform:scale(0.97);}
+.btn-block{width:100%;}
+.btn-primary{background:linear-gradient(120deg,var(--teal-600),var(--teal-700));color:#fff;box-shadow:0 2px 10px rgba(14,124,123,0.28);}
+.btn-primary:hover{box-shadow:0 4px 16px rgba(14,124,123,0.36);}
+.btn-secondary{background:var(--paper-0);color:var(--ink-900);border-color:var(--line-200);}
+.btn-secondary:hover{border-color:var(--teal-400);color:var(--teal-700);}
+.btn-ghost{background:transparent;color:var(--slate-600);}
+.btn-ghost:hover{background:var(--line-100);}
+.btn-danger{background:var(--paper-0);color:var(--red-600);border-color:var(--red-100);}
+.btn-danger:hover{background:var(--red-100);}
+.btn-danger-solid{background:var(--red-600);color:#fff;}
+.btn-danger-solid:hover{background:#c41f1f;}
+.btn-sm{padding:7px 13px;font-size:12.5px;border-radius:7px;}
+.btn:disabled{opacity:0.55;cursor:not-allowed;}
+.btn svg{width:16px;height:16px;flex-shrink:0;}
+.icon-btn{
+  width:34px;height:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;
+  background:transparent;border:1.5px solid transparent;color:var(--slate-500);transition:all var(--transition);
+}
+.icon-btn:hover{background:var(--line-100);color:var(--ink-900);}
+.icon-btn.danger:hover{background:var(--red-100);color:var(--red-600);}
+.icon-btn svg{width:17px;height:17px;}
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+#app-shell{display:flex;min-height:100vh;}
+#sidebar{
+  width:242px;flex-shrink:0;background:var(--ink-900);color:#fff;
+  display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:40;
+  transition:transform var(--transition);
+}
+#sidebar .side-head{padding:22px 20px 16px;}
+#sidebar .brand-logo{transform:scale(0.92);transform-origin:left center;}
+.branch-chip{
+  margin:2px 20px 14px;padding:9px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;font-size:12px;color:var(--teal-400);display:flex;align-items:center;gap:7px;
+}
+.branch-chip svg{width:14px;height:14px;flex-shrink:0;}
+.branch-chip b{color:#fff;font-weight:600;display:block;font-size:12.5px;}
+nav.side-nav{flex:1;padding:6px 12px;overflow-y:auto;}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;margin-bottom:2px;
+  color:rgba(255,255,255,0.62);font-size:13.5px;font-weight:500;position:relative;cursor:pointer;
+  transition:background var(--transition),color var(--transition);
+}
+.nav-item svg{width:17px;height:17px;flex-shrink:0;}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+.nav-item.active{background:rgba(20,148,143,0.22);color:#fff;}
+.nav-item.active::before{
+  content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:3px;height:18px;
+  background:var(--teal-400);border-radius:0 3px 3px 0;
+}
+.nav-group-label{font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.32);text-transform:uppercase;letter-spacing:0.6px;padding:14px 12px 6px;}
+#sidebar .side-foot{padding:14px 20px 18px;border-top:1px solid rgba(255,255,255,0.08);}
+.user-chip{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.user-avatar{
+  width:34px;height:34px;border-radius:50%;background:linear-gradient(140deg,var(--teal-500),var(--teal-700));
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0;
+}
+.user-chip .who{overflow:hidden;}
+.user-chip .who .nm{font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-chip .who .rl{font-size:11px;color:rgba(255,255,255,0.45);text-transform:capitalize;}
+.sidebar-trace{height:26px;margin-top:6px;opacity:0.5;}
+.sidebar-trace svg{width:100%;height:100%;}
+.sidebar-trace path{fill:none;stroke:var(--teal-400);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:4 300;animation:trace-run 4s linear infinite;}
+
+#main-col{margin-left:242px;flex:1;display:flex;flex-direction:column;min-height:100vh;min-width:0;}
+#topbar{
+  height:64px;flex-shrink:0;background:var(--paper-0);border-bottom:1px solid var(--line-200);
+  display:flex;align-items:center;justify-content:space-between;padding:0 26px;position:sticky;top:0;z-index:30;
+}
+#topbar .crumb{font-family:var(--font-display);font-weight:600;font-size:16.5px;display:flex;align-items:center;gap:10px;}
+#topbar .crumb .sub{font-family:var(--font-body);font-weight:400;font-size:12.5px;color:var(--slate-400);}
+#menu-toggle{display:none;}
+#content{flex:1;padding:26px;max-width:1360px;width:100%;}
+.view{animation:fade-up 0.35s var(--ease) both;}
+@keyframes fade-up{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ============================================================
+   CARDS / STATS
+   ============================================================ */
+.card{background:var(--paper-0);border:1px solid var(--line-200);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);}
+.card-pad{padding:22px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line-100);}
+.card-head h3{font-family:var(--font-display);font-size:15px;font-weight:600;}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px;}
+.stat-card{
+  background:var(--paper-0);border:1px solid var(--line-200);border-radius:var(--radius-md);padding:18px 20px;
+  transition:transform var(--transition),box-shadow var(--transition);position:relative;overflow:hidden;
+}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.stat-card .lbl{font-size:11.5px;font-weight:600;color:var(--slate-500);text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:6px;}
+.stat-card .val{font-family:var(--font-mono);font-size:26px;font-weight:600;margin-top:8px;color:var(--ink-900);}
+.stat-card .delta{font-size:12px;margin-top:5px;font-weight:600;}
+.stat-card.accent-teal{border-top:3px solid var(--teal-500);}
+.stat-card.accent-green{border-top:3px solid var(--green-500);}
+.stat-card.accent-amber{border-top:3px solid var(--amber-500);}
+.stat-card.accent-ink{border-top:3px solid var(--ink-700);}
+.stat-card.accent-violet{border-top:3px solid var(--violet-500);}
+.stat-card.accent-blue{border-top:3px solid var(--blue-500);}
+.stat-card.accent-red{border-top:3px solid var(--red-600);}
+.stat-card .val.c-green{color:var(--green-600);}
+.stat-card .val.c-amber{color:var(--amber-600);}
+.stat-card .val.c-violet{color:var(--violet-600);}
+
+/* ---------- Dashboard stat icon badges (colorful, animated) ---------- */
+.stat-icon-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:6px;flex-shrink:0;
+  animation:statBadgePulse 2.6s ease-in-out infinite;
+  transition:transform .3s var(--ease),box-shadow .3s var(--ease);
+}
+.stat-icon-badge svg{width:12px;height:12px;stroke:#fff;stroke-width:2.6;}
+.stat-card:hover .stat-icon-badge{transform:scale(1.14) translateY(-1px);animation-play-state:paused;box-shadow:0 5px 12px 0 var(--glow);}
+.stat-icon-badge.badge-ink{background:linear-gradient(135deg,var(--ink-700),var(--ink-900));--glow:rgba(11,31,38,.5);}
+.stat-icon-badge.badge-teal{background:linear-gradient(135deg,var(--teal-400),var(--teal-700));--glow:rgba(14,148,143,.5);}
+.stat-icon-badge.badge-green{background:linear-gradient(135deg,#42D68C,var(--green-600));--glow:rgba(23,138,86,.5);}
+.stat-icon-badge.badge-amber{background:linear-gradient(135deg,#F7AC4D,var(--amber-600));--glow:rgba(181,98,13,.5);}
+.stat-icon-badge.badge-violet{background:linear-gradient(135deg,#A98AE0,var(--violet-600));--glow:rgba(109,74,174,.5);}
+.stat-icon-badge.badge-blue{background:linear-gradient(135deg,#6FA3EE,var(--blue-600));--glow:rgba(29,95,191,.5);}
+.stat-icon-badge.badge-red{background:linear-gradient(135deg,#F0716B,var(--red-600));--glow:rgba(220,38,38,.5);}
+@keyframes statBadgePulse{
+  0%,100%{box-shadow:0 2px 5px -1px var(--glow);}
+  50%{box-shadow:0 3px 10px 0 var(--glow);}
+}
+@media (prefers-reduced-motion: reduce){.stat-icon-badge{animation:none;}}
+
+/* ============================================================
+   FORMS
+   ============================================================ */
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+.form-grid.cols-3{grid-template-columns:repeat(3,1fr);}
+.field-wrap{display:flex;flex-direction:column;gap:6px;}
+.hint{font-size:11.5px;color:var(--slate-400);}
+.banner-icon{width:18px;height:18px;flex-shrink:0;}
+.banner-icon svg{width:18px;height:18px;}
+.field-wrap.span-2{grid-column:span 2;}
+.field-wrap label{font-size:12.5px;font-weight:600;color:var(--slate-600);}
+.field-wrap label .req{color:var(--amber-600);}
+.field-wrap .hint{font-size:11px;color:var(--slate-400);}
+.field-wrap .err{font-size:11.5px;color:var(--red-600);display:none;font-weight:500;}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=month],input[type=tel],input[type=time],select,textarea{
+  width:100%;padding:10px 12px;border:1.5px solid var(--line-200);border-radius:var(--radius-sm);
+  background:var(--paper-0);color:var(--ink-900);transition:border-color var(--transition);
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal-500);}
+input.invalid,select.invalid{border-color:var(--red-600);}
+select{appearance:none;background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235B7278' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 10px center;padding-right:32px;}
+
+.search-select{position:relative;}
+.search-select .ss-input{cursor:text;}
+.search-select .ss-dropdown{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--paper-0);border:1.5px solid var(--line-200);
+  border-radius:var(--radius-sm);box-shadow:var(--shadow-md);max-height:230px;overflow-y:auto;z-index:60;
+}
+.search-select .ss-option{padding:9px 12px;font-size:13.5px;cursor:pointer;color:var(--ink-900);}
+.search-select .ss-option:hover,.search-select .ss-option.active{background:var(--teal-50);}
+.search-select .ss-empty{padding:9px 12px;font-size:13px;color:var(--slate-400);}
+textarea{resize:vertical;min-height:64px;}
+.checkbox-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slate-600);}
+
+.multi-row{
+  display:grid;grid-template-columns:1fr 34px;gap:10px;align-items:center;margin-bottom:10px;
+  padding:12px 14px 12px 40px;background:var(--paper-50);border-radius:var(--radius-sm);border:1px solid var(--line-100);position:relative;
+}
+.multi-row .row-num{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;
+  background:var(--teal-100);color:var(--teal-700);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;
+}
+#add-multi-row-btn{margin-top:2px;}
+
+.form-page{max-width:760px;margin:0 auto;}
+.summary-pill{
+  display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--teal-700);
+  background:var(--teal-50);border:1px solid var(--teal-100);padding:5px 12px;border-radius:99px;
+}
+.form-section-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:var(--teal-100);color:var(--teal-700);margin-right:8px;}
+.form-section-icon svg{width:14px;height:14px;}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.table-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--line-200);background:var(--paper-0);}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px;}
+thead th{
+  text-align:left;padding:12px 16px;background:var(--paper-50);color:var(--slate-600);font-weight:600;
+  font-size:11.5px;text-transform:uppercase;letter-spacing:0.4px;border-bottom:1px solid var(--line-200);white-space:nowrap;
+  position:sticky;top:0;
+}
+tbody td{padding:12px 16px;border-bottom:1px solid var(--line-100);white-space:nowrap;color:var(--ink-900);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr{transition:background var(--transition);}
+tbody tr:hover{background:var(--paper-50);}
+tbody td.num,thead th.num{text-align:right;font-family:var(--font-mono);}
+td.id-cell{font-family:var(--font-mono);letter-spacing:0.3px;font-weight:600;}
+tr.total-row td{background:var(--amber-100);font-weight:700;border-top:2px solid var(--amber-500);border-bottom:2px solid var(--amber-500);}
+tr.total-row{position:sticky;bottom:0;}
+
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:99px;letter-spacing:0.2px;}
+.badge svg{width:11px;height:11px;}
+.badge.neutral{background:var(--line-100);color:var(--slate-500);}
+.badge.active{background:var(--green-100);color:var(--green-600);}
+.badge.inactive{background:var(--red-100);color:var(--red-600);}
+/* Booking-status semantics */
+.badge.st-booked{background:var(--blue-100);color:var(--blue-600);}
+.badge.st-completed{background:var(--green-100);color:var(--green-600);}
+.badge.st-cancelled{background:var(--red-100);color:var(--red-600);}
+.badge.st-rescheduled{background:var(--amber-100);color:var(--amber-600);}
+/* Priority semantics */
+.badge.pr-normal{background:var(--line-100);color:var(--slate-500);}
+.badge.pr-urgent{background:var(--amber-100);color:var(--amber-600);}
+.badge.pr-vip{background:var(--violet-100);color:var(--violet-600);}
+
+.table-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;flex-wrap:wrap;}
+.search-box{position:relative;min-width:220px;flex:1;max-width:320px;}
+.search-box svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--slate-400);}
+.search-box input{padding-left:34px;}
+.pill-filters{display:flex;gap:8px;flex-wrap:wrap;}
+.pill{padding:6px 13px;border-radius:99px;font-size:12.5px;font-weight:600;border:1.5px solid var(--line-200);color:var(--slate-500);background:var(--paper-0);transition:all var(--transition);}
+.pill.active{background:var(--ink-900);border-color:var(--ink-900);color:#fff;}
+
+.empty-state{text-align:center;padding:56px 24px;color:var(--slate-500);}
+.empty-state svg{width:46px;height:46px;color:var(--slate-300);margin:0 auto 14px;}
+.empty-state h4{font-family:var(--font-display);font-size:15.5px;color:var(--ink-900);margin-bottom:5px;}
+.empty-state p{font-size:13px;max-width:340px;margin:0 auto;}
+
+/* ============================================================
+   MODAL / TOAST / OVERLAY
+   ============================================================ */
+#modal-root{position:fixed;inset:0;z-index:100;display:none;}
+#modal-root.show{display:block;}
+.modal-backdrop{position:absolute;inset:0;background:rgba(11,31,38,0.42);backdrop-filter:blur(2px);animation:fade-in 0.2s var(--ease);}
+@keyframes fade-in{from{opacity:0;}to{opacity:1;}}
+.modal-box{
+  position:relative;max-width:560px;width:calc(100% - 32px);margin:6vh auto;max-height:88vh;overflow-y:auto;
+  background:var(--paper-0);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);
+  animation:modal-in 0.25s var(--ease);
+}
+.modal-box.wide{max-width:760px;}
+@keyframes modal-in{from{opacity:0;transform:translateY(10px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--line-100);position:sticky;top:0;background:var(--paper-0);z-index:2;border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
+.modal-head h3{font-family:var(--font-display);font-size:17px;font-weight:600;}
+.modal-body{padding:22px;}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--line-100);position:sticky;bottom:0;background:var(--paper-0);border-radius:0 0 var(--radius-lg) var(--radius-lg);}
+
+#toast-stack{position:fixed;bottom:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:10px;max-width:340px;}
+.toast{
+  background:var(--ink-900);color:#fff;padding:13px 16px;border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);
+  font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;animation:toast-in 0.3s var(--ease);
+}
+.toast svg{width:17px;height:17px;flex-shrink:0;}
+.toast.success{background:var(--green-600);}
+.toast.error{background:var(--red-600);}
+.toast.info{background:var(--ink-800);}
+@keyframes toast-in{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:translateX(0);}}
+
+#save-flash{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:rgba(11,31,38,.32);opacity:0;pointer-events:none;transition:opacity .2s var(--ease);}
+#save-flash.show{opacity:1;}
+.save-flash-card{background:var(--paper-0);border-radius:var(--radius-lg);padding:30px 42px;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:var(--shadow-lg);transform:scale(.86);transition:transform .3s var(--ease);}
+#save-flash.show .save-flash-card{transform:scale(1);}
+.save-flash-check{width:56px;height:56px;}
+.save-flash-check circle{fill:none;stroke:var(--green-500);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:151;stroke-dashoffset:151;}
+.save-flash-check path{fill:none;stroke:var(--green-500);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:36;stroke-dashoffset:36;}
+#save-flash.show .save-flash-check circle{animation:sf-circle .4s var(--ease) forwards;}
+#save-flash.show .save-flash-check path{animation:sf-check .25s var(--ease) .35s forwards;}
+@keyframes sf-circle{to{stroke-dashoffset:0;}}
+@keyframes sf-check{to{stroke-dashoffset:0;}}
+.save-flash-text{font-family:var(--font-display);font-weight:600;font-size:15.5px;color:var(--ink-900);}
+@media (prefers-reduced-motion: reduce){#save-flash,.save-flash-card,.save-flash-check circle,.save-flash-check path{animation:none !important;transition:none !important;}}
+
+/* ============================================================
+   MISC: chips, mapping ui, charts, loaders, register tiles
+   ============================================================ */
+.section-label{font-size:11.5px;font-weight:700;color:var(--teal-700);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;display:block;}
+.divider{height:1px;background:var(--line-100);margin:18px 0;}
+.file-drop{
+  border:2px dashed var(--line-200);border-radius:var(--radius-md);padding:26px;text-align:center;
+  transition:all var(--transition);cursor:pointer;background:var(--paper-50);
+}
+.file-drop:hover,.file-drop.drag{border-color:var(--teal-500);background:var(--teal-50);}
+.file-drop svg{width:30px;height:30px;color:var(--teal-500);margin:0 auto 8px;}
+.file-drop .fname{font-family:var(--font-mono);font-size:12.5px;color:var(--teal-700);margin-top:6px;}
+
+.month-tile{
+  display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:1px solid var(--line-200);
+  border-radius:var(--radius-md);margin-bottom:10px;transition:all var(--transition);background:var(--paper-0);
+}
+.month-tile:hover{box-shadow:var(--shadow-sm);}
+.month-tile .m-name{font-family:var(--font-display);font-weight:600;font-size:14.5px;}
+.month-tile .m-meta{font-size:11.5px;color:var(--slate-500);margin-top:2px;}
+
+.progress-track{height:8px;border-radius:99px;background:var(--line-100);overflow:hidden;}
+.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green-500),var(--teal-500));transition:width 0.6s var(--ease);}
+
+.loader-ring{width:20px;height:20px;border:2.5px solid var(--line-200);border-top-color:var(--teal-500);border-radius:50%;animation:spin 0.7s linear infinite;}
+
+.chart-legend{display:flex;gap:18px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
+.chart-legend .li{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--slate-600);font-weight:500;}
+.chart-legend .dot{width:9px;height:9px;border-radius:50%;}
+
+.role-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:0.4px;}
+.role-tag.superadmin{background:var(--ink-800);color:var(--teal-400);}
+.role-tag.admin{background:var(--teal-100);color:var(--teal-700);}
+.role-tag.agent{background:var(--amber-100);color:var(--amber-600);}
+
+/* Register tiles — quick-jump cards used on the combined Bookings landing view */
+.register-tile{
+  display:flex;align-items:center;gap:14px;padding:20px;border:1px solid var(--line-200);border-radius:var(--radius-md);
+  background:var(--paper-0);cursor:pointer;transition:all var(--transition);text-align:left;
+}
+.register-tile:hover{border-color:var(--teal-400);box-shadow:var(--shadow-md);transform:translateY(-2px);}
+.register-tile .ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;}
+.register-tile .ico svg{width:22px;height:22px;}
+.register-tile .txt{min-width:0;}
+.register-tile .txt .t{font-family:var(--font-display);font-weight:600;font-size:14.5px;color:var(--ink-900);}
+.register-tile .txt .s{font-size:12px;color:var(--slate-500);margin-top:2px;}
+
+#global-loader{position:fixed;inset:0;background:var(--paper-50);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width:900px){
+  #sidebar{transform:translateX(-100%);width:250px;box-shadow:var(--shadow-lg);}
+  #sidebar.open{transform:translateX(0);}
+  #main-col{margin-left:0;}
+  #menu-toggle{display:flex;}
+  .form-grid,.form-grid.cols-3{grid-template-columns:1fr;}
+  .field-wrap.span-2{grid-column:span 1;}
+  .multi-row{grid-template-columns:1fr;}
+  #sidebar-scrim{display:none;position:fixed;inset:0;background:rgba(11,31,38,0.4);z-index:39;}
+  #sidebar-scrim.show{display:block;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     GLOBAL LOADER — shown while Firebase/session is resolving
+     ============================================================ -->
+<div id="global-loader">
+  <div class="brand-logo">
+    <div class="mark">
+      <svg viewBox="0 0 24 24"><path class="cal-body" d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path class="cal-check" d="M8.5 14.5l2.5 2.5 5-5"/></svg>
+    </div>
+    <div><div class="wordmark">CareDesk</div></div>
+  </div>
+  <div class="loader-ring"></div>
+</div>
+
+<!-- ============================================================
+     LOGIN SCREEN
+     ============================================================ -->
+<div id="login-screen" class="hidden">
+  <div class="login-hero">
+    <div class="brand-logo">
+      <div class="mark">
+        <svg viewBox="0 0 24 24"><path class="cal-body" d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path class="cal-check" d="M8.5 14.5l2.5 2.5 5-5"/></svg>
+      </div>
+      <div><div class="wordmark">CareDesk</div></div>
+    </div>
+    <h1>Appointment Booking Register</h1>
+  </div>
+  <form id="login-card" class="login-card" autocomplete="on">
+    <div id="login-error"></div>
+    <div class="field">
+      <label for="login-email">Email</label>
+      <input type="email" id="login-email" autocomplete="username" placeholder="you@example.com" required>
+    </div>
+    <div class="field">
+      <label for="login-password">Password</label>
+      <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••" required>
+    </div>
+    <button type="submit" id="login-submit-btn" class="btn btn-primary btn-block">Sign In</button>
+  </form>
+  <div class="login-foot">
+    <div class="brand-trace">
+      <svg viewBox="0 0 360 34" preserveAspectRatio="none">
+        <path class="ghost" d="M0 17 Q90 3 180 17 T360 17"/>
+        <path d="M0 17 Q90 3 180 17 T360 17"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     APP SHELL
+     ============================================================ -->
+<div id="app-shell" class="hidden">
+  <div id="sidebar-scrim"></div>
+  <aside id="sidebar">
+    <div class="side-head">
+      <div class="brand-logo on-dark">
+        <div class="mark">
+          <svg viewBox="0 0 24 24"><path class="cal-body" d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path class="cal-check" d="M8.5 14.5l2.5 2.5 5-5"/></svg>
+        </div>
+        <div><div class="wordmark">CareDesk</div></div>
+      </div>
+    </div>
+    <div id="branch-chip-slot"></div>
+    <nav class="side-nav" id="side-nav"></nav>
+    <div class="side-foot">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="who">
+          <div class="nm" id="user-name">—</div>
+          <div class="rl" id="user-role">—</div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm btn-block" id="logout-btn">Sign Out</button>
+      <div class="sidebar-trace">
+        <svg viewBox="0 0 200 26" preserveAspectRatio="none"><path d="M0 13 Q50 2 100 13 T200 13"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <div id="main-col">
+    <header id="topbar">
+      <div class="u-flex u-gap-12" style="align-items:center;">
+        <button id="menu-toggle" class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div class="crumb"><span id="crumb-title">Dashboard</span><span class="sub" id="crumb-sub"></span></div>
+      </div>
+      <div id="topbar-actions" class="u-flex u-gap-8"></div>
+    </header>
+    <main id="content"></main>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL / TOAST / SAVE-FLASH ROOTS
+     ============================================================ -->
+<div id="modal-root"></div>
+<div id="toast-stack"></div>
+<div id="save-flash">
+  <div class="save-flash-card">
+    <svg class="save-flash-check" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24"/><path d="M17 29l7 7 15-15"/></svg>
+    <div class="save-flash-text" id="save-flash-text">Saved</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script type="module">
+/* ============================================================
+   CAREDESK APPLICATION SCRIPT
+   Appointment Booking Register — multi-branch, role-based.
+   ============================================================ */
+
+/* ---------- Firebase (v12 modular SDK, same CDN family as reference app) ---------- */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
+  createUserWithEmailAndPassword, sendPasswordResetEmail,
+  updatePassword as fbUpdatePassword, EmailAuthProvider, reauthenticateWithCredential
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+import {
+  getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
+  query, where, orderBy, limit, runTransaction, writeBatch, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+/* ============================================================
+   FIREBASE CONFIG — PLACEHOLDER
+   Replace every value below with your real Firebase project's
+   config (Project settings → General → Your apps → SDK setup).
+   Full setup steps are in README.md.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+const CONFIG_IS_PLACEHOLDER = Object.values(firebaseConfig).some(v => String(v).startsWith('YOUR_'));
+
+const app = CONFIG_IS_PLACEHOLDER ? null : initializeApp(firebaseConfig);
+const auth = CONFIG_IS_PLACEHOLDER ? null : getAuth(app);
+const db = CONFIG_IS_PLACEHOLDER ? null : getFirestore(app);
+// Secondary app instance — used only to create new user accounts (agents/admins)
+// without disturbing the currently signed-in session, since createUserWithEmailAndPassword
+// signs in as the newly created user on whichever auth instance it's called on.
+let secondaryApp = null, secondaryAuth = null;
+function getSecondaryAuth() {
+  if (!secondaryApp) {
+    secondaryApp = initializeApp(firebaseConfig, 'Secondary');
+    secondaryAuth = getAuth(secondaryApp);
+  }
+  return secondaryAuth;
+}
+
+/* ============================================================
+   CONSTANTS
+   ============================================================ */
+const ROLES = { SUPERADMIN: 'superadmin', ADMIN: 'admin', AGENT: 'agent' };
+
+const STATUS_OPTIONS = ['Booked', 'Completed', 'Cancelled', 'Rescheduled'];
+const PRIORITY_OPTIONS = ['Normal', 'Urgent', 'VIP'];
+const DEFAULT_SOURCES = ['Walk-in', 'Phone', 'WhatsApp', 'Website', 'Referral'];
+const DEFAULT_TREATMENT_TYPES = ['Consultation', 'Cleaning', 'Filling', 'Root Canal', 'Extraction', 'Braces', 'Others'];
+
+const DEFAULT_SETTINGS = {
+  clinicStart: '09:00',
+  clinicEnd: '20:00',
+  slotMinutes: { doctor: 15, test: 15, homeCollection: 30, dental: 20 },
+  bookingSources: DEFAULT_SOURCES.slice(),
+  dentalTreatmentTypes: DEFAULT_TREATMENT_TYPES.slice()
+};
+
+// The four booking registers. This config drives the shared list/form engine;
+// each register's small differences are handled by the registerExtra* hook
+// functions defined later, keyed by `key`.
+const REGISTERS = {
+  doctor: {
+    key: 'doctor', label: 'Doctor Appointments', short: 'Doctor', icon: 'stethoscope',
+    accent: 'teal', collection: 'doctorBookings', idPrefix: 'DOC', slotKey: 'doctor',
+    listCols: [
+      { k: 'bookingId', h: 'ID' }, { k: 'doctorName', h: 'Doctor' }, { k: 'specialty', h: 'Specialty' },
+      { k: 'appointmentDate', h: 'Date' }, { k: 'timeSlot', h: 'Time Slot' },
+      { k: 'patientName', h: 'Patient' }, { k: 'mobileNumber', h: 'Mobile' }
+    ]
+  },
+  test: {
+    key: 'test', label: 'Test Bookings', short: 'Test', icon: 'flask',
+    accent: 'blue', collection: 'testBookings', idPrefix: 'TST', slotKey: 'test',
+    listCols: [
+      { k: 'bookingId', h: 'ID' }, { k: 'patientName', h: 'Patient' }, { k: 'mobileNumber', h: 'Mobile' },
+      { k: 'appointmentDate', h: 'Date' }, { k: 'timeSlot', h: 'Time Slot' }, { k: 'testsSummary', h: 'Tests' }
+    ]
+  },
+  homeCollection: {
+    key: 'homeCollection', label: 'Home Collection', short: 'Home Collection', icon: 'home',
+    accent: 'amber', collection: 'homeCollectionBookings', idPrefix: 'HC', slotKey: 'homeCollection',
+    listCols: [
+      { k: 'bookingId', h: 'ID' }, { k: 'patientName', h: 'Patient' }, { k: 'mobileNumber', h: 'Mobile' },
+      { k: 'appointmentDate', h: 'Date' }, { k: 'timeSlot', h: 'Time Slot' }, { k: 'area', h: 'Area' }
+    ]
+  },
+  dental: {
+    key: 'dental', label: 'Dental Appointments', short: 'Dental', icon: 'tooth',
+    accent: 'violet', collection: 'dentalBookings', idPrefix: 'DEN', slotKey: 'dental',
+    listCols: [
+      { k: 'bookingId', h: 'ID' }, { k: 'doctorName', h: 'Doctor' }, { k: 'treatmentType', h: 'Treatment' },
+      { k: 'appointmentDate', h: 'Date' }, { k: 'timeSlot', h: 'Time Slot' },
+      { k: 'patientName', h: 'Patient' }, { k: 'mobileNumber', h: 'Mobile' }
+    ]
+  }
+};
+const REGISTER_KEYS = Object.keys(REGISTERS);
+
+const VIEW_TITLES = {
+  dashboard: ['Dashboard', ''],
+  'sa-branches': ['Branches', 'Manage every branch from one place'],
+  doctor: ['Doctor Appointments', ''],
+  test: ['Test Bookings', ''],
+  homeCollection: ['Home Collection', ''],
+  dental: ['Dental Appointments', ''],
+  masters: ['Masters', 'Doctors & Tests used across registers'],
+  users: ['User Management', ''],
+  reports: ['Reports', ''],
+  settings: ['Settings', '']
+};
+
+/* ============================================================
+   ICONS — small inline SVG library, stroke-based, 24x24 viewBox
+   ============================================================ */
+const ICON_PATHS = {
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  stethoscope: '<path d="M5 3v6a4 4 0 0 0 8 0V3M9 21a4 4 0 0 0 4-4v-3"/><circle cx="18" cy="16" r="2.4"/><path d="M13 9h2"/>',
+  flask: '<path d="M9 2h6M10 2v6l-5.2 9a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 8V2"/><path d="M7 15h10"/>',
+  home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+  tooth: '<path d="M12 4c-2.2 0-3 1.4-4.6 1.4C5.7 5.4 4 6.9 4 9.2c0 2 .9 2.7 1.2 4.9.3 2.2.9 6.4 2.6 6.4 1.5 0 1.4-3.4 2.5-3.4s1 3.4 2.5 3.4c1.7 0 2.3-4.2 2.6-6.4.3-2.2 1.2-2.9 1.2-4.9 0-2.3-1.7-3.8-3.4-3.8C15 5.4 14.2 4 12 4Z"/>',
+  users: '<path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 20v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  userPlus: '<path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  userCheck: '<path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M17 11l2 2 4-4"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  barChart: '<path d="M4 20V10M12 20V4M20 20v-7"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/>',
+  restore: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  x: '<path d="M18 6L6 18M6 6l12 12"/>',
+  check: '<path d="M20 6L9 17l-5-5"/>',
+  chevronRight: '<path d="M9 18l6-6-6-6"/>',
+  chevronDown: '<path d="M6 9l6 6 6-6"/>',
+  chevronLeft: '<path d="M15 18l-6-6 6-6"/>',
+  download: '<path d="M12 3v12M6 11l6 6 6-6"/><path d="M5 21h14"/>',
+  upload: '<path d="M12 21V9M6 13l6-6 6 6"/><path d="M5 21h14"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/>',
+  phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L7.9 9.9a16 16 0 0 0 6 6l1.4-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.9 2.2Z"/>',
+  messageCircle: '<path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4 8.6 8.6 0 0 1-3.8-.9L3 20l1.1-5.3a8.4 8.4 0 0 1-.9-3.8A8.4 8.4 0 0 1 12 2.5a8.4 8.4 0 0 1 9 9Z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>',
+  shieldCheck: '<path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4Z"/><path d="M9 12l2 2 4-4"/>',
+  building: '<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/>',
+  logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  alertTriangle: '<path d="M10.3 3.9L1.8 18a1.5 1.5 0 0 0 1.3 2.3h17.8a1.5 1.5 0 0 0 1.3-2.3L13.7 3.9a1.5 1.5 0 0 0-2.6 0Z"/><path d="M12 9v4M12 17h.01"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-5M12 8h.01"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  star: '<path d="M12 2l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 18.3 5.6 21.7 7 14.5l-5.3-5 7.2-.9L12 2Z"/>',
+  zap: '<path d="M13 2L3 14h7l-1 8 10-12h-7l1-8Z"/>',
+  arrowLeft: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+  mapPin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+  filter: '<path d="M4 5h16l-6.5 8v6l-3 1.5v-7.5L4 5Z"/>',
+  building2: '<path d="M3 21h18"/><rect x="6" y="3" width="8" height="18"/><rect x="14" y="8" width="6" height="13"/><path d="M9 7h1M9 11h1M9 15h1"/>',
+  refresh: '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/>'
+};
+function icon(name, cls) {
+  const p = ICON_PATHS[name] || ICON_PATHS.info;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${cls ? ` class="${cls}"` : ''}>${p}</svg>`;
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  user: null,            // { uid, name, email, role, branchId, permissions }
+  branchId: null,
+  branchName: '',
+  branchActive: true,
+  settings: null,        // merged DEFAULT_SETTINGS + branch overrides
+  doctors: [],
+  tests: [],
+  isSuperAdmin: false,
+  isAdmin: false,
+  isAgent: false,
+  view: 'dashboard',
+  viewParams: {},
+  registerCache: {}       // per-register in-memory cache for the currently open list view
+};
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function toNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function formatInt(n) { return (n || 0).toLocaleString('en-IN'); }
+function debounce(fn, wait) {
+  let t = null;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+}
+function pad2(n) { return String(n).padStart(2, '0'); }
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function addDaysISO(iso, n) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function formatDateHuman(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function formatDateTimeHuman(input) {
+  let d;
+  if (!input) return '—';
+  if (typeof input.toDate === 'function') d = input.toDate();
+  else d = new Date(input);
+  if (isNaN(d)) return '—';
+  return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function validateEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim()); }
+function validateMobile(v) {
+  const digits = (v || '').replace(/[^\d]/g, '');
+  return digits.length >= 7 && digits.length <= 15;
+}
+function normalizeMobile(v) { return (v || '').replace(/[^\d+]/g, ''); }
+function initialsOf(name) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+/* ---------- Toast ---------- */
+function toast(message, kind) {
+  const stack = document.getElementById('toast-stack');
+  const el = document.createElement('div');
+  el.className = `toast ${kind || 'info'}`;
+  const iconName = kind === 'success' ? 'check' : kind === 'error' ? 'alertTriangle' : 'info';
+  el.innerHTML = `${icon(iconName)}<span>${escapeHtml(message)}</span>`;
+  stack.appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .25s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 260); }, 3400);
+}
+
+/* ---------- Modal ---------- */
+function openModal(html, opts) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `<div class="modal-backdrop" data-close="1"></div><div class="modal-box${opts && opts.wide ? ' wide' : ''}">${html}</div>`;
+  root.classList.add('show');
+  root.querySelector('.modal-backdrop').addEventListener('mousedown', () => { if (!(opts && opts.persistent)) closeModal(); });
+  document.addEventListener('keydown', modalEscHandler);
+}
+function modalEscHandler(e) { if (e.key === 'Escape') closeModal(); }
+function closeModal() {
+  const root = document.getElementById('modal-root');
+  root.classList.remove('show');
+  root.innerHTML = '';
+  document.removeEventListener('keydown', modalEscHandler);
+}
+function confirmDialog({ title, message, confirmLabel, danger, extra }) {
+  return new Promise((resolve) => {
+    openModal(`
+      <div class="modal-head"><h3>${escapeHtml(title || 'Are you sure?')}</h3><button class="icon-btn" id="cd-x">${icon('x')}</button></div>
+      <div class="modal-body"><p style="font-size:13.5px;color:var(--slate-600);line-height:1.55;">${message || ''}</p>${extra || ''}</div>
+      <div class="modal-foot"><button class="btn btn-secondary" id="cd-cancel">Cancel</button><button class="btn ${danger ? 'btn-danger-solid' : 'btn-primary'}" id="cd-ok">${escapeHtml(confirmLabel || 'Confirm')}</button></div>
+    `, { persistent: true });
+    const finish = (v) => { closeModal(); resolve(v); };
+    document.getElementById('cd-x').addEventListener('click', () => finish(false));
+    document.getElementById('cd-cancel').addEventListener('click', () => finish(false));
+    document.getElementById('cd-ok').addEventListener('click', () => finish(true));
+  });
+}
+
+/* ---------- Button loading state ---------- */
+function setBtnLoading(btn, loading, labelWhenLoading) {
+  if (!btn) return;
+  if (loading) {
+    btn.dataset.originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="loader-ring" style="width:15px;height:15px;border-width:2px;"></span>${labelWhenLoading ? `<span>${escapeHtml(labelWhenLoading)}</span>` : ''}`;
+  } else {
+    btn.disabled = false;
+    if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
+  }
+}
+
+/* ---------- Save flash (full-screen confirmation flourish) ---------- */
+function showSaveFlash(text) {
+  const el = document.getElementById('save-flash');
+  document.getElementById('save-flash-text').textContent = text || 'Saved';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1100);
+}
+
+/* ---------- Animated count-up for stat cards ---------- */
+function animateCountUp(el, end) {
+  if (!el) return;
+  const start = 0, dur = 700, t0 = performance.now();
+  function tick(t) {
+    const p = Math.min(1, (t - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = formatInt(Math.round(start + (end - start) * eased));
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- Search-select (typeahead) component ---------- */
+function initSearchSelect(id, options, initialValue, onSelect, blankLabel) {
+  const root = document.getElementById(id);
+  if (!root) return null;
+  let opts = options.slice();
+  if (initialValue && !opts.some(o => o.value === initialValue)) opts = [{ value: initialValue, label: initialValue + ' (custom)' }].concat(opts);
+  let value = initialValue || '';
+  function labelFor(v) { if (blankLabel !== undefined && v === blankLabel) return ''; const o = opts.find(x => x.value === v); return o ? o.label : ''; }
+  root.innerHTML = `<input type="text" class="ss-input" autocomplete="off" placeholder="${blankLabel !== undefined ? escapeHtml(blankLabel) : 'Type to search…'}" value="${escapeHtml(labelFor(value))}"><div class="ss-dropdown hidden"></div>`;
+  const input = root.querySelector('.ss-input'), dropdown = root.querySelector('.ss-dropdown');
+  let activeIndex = -1, visible = [];
+  function renderList(term) {
+    const t = (term || '').trim().toLowerCase();
+    visible = t ? opts.filter(o => o.label.toLowerCase().includes(t)) : opts;
+    activeIndex = -1;
+    dropdown.innerHTML = visible.length ? visible.slice(0, 60).map((o, i) => `<div class="ss-option" data-i="${i}">${escapeHtml(o.label)}</div>`).join('') : `<div class="ss-empty">No matches</div>`;
+    dropdown.classList.remove('hidden');
+    dropdown.querySelectorAll('.ss-option').forEach(el => el.addEventListener('mousedown', (e) => { e.preventDefault(); choose(visible[+el.dataset.i]); }));
+  }
+  function choose(opt) {
+    value = opt ? opt.value : (blankLabel !== undefined ? blankLabel : '');
+    input.value = labelFor(value);
+    dropdown.classList.add('hidden');
+    if (onSelect) onSelect(value, opt);
+  }
+  function highlight(i) {
+    activeIndex = i;
+    dropdown.querySelectorAll('.ss-option').forEach((el, idx) => el.classList.toggle('active', idx === i));
+    const el = dropdown.querySelector(`.ss-option[data-i="${i}"]`);
+    if (el) el.scrollIntoView({ block: 'nearest' });
+  }
+  input.addEventListener('focus', () => renderList(''));
+  input.addEventListener('input', () => renderList(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (dropdown.classList.contains('hidden') && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { renderList(input.value); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); highlight(Math.min(activeIndex + 1, visible.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlight(Math.max(activeIndex - 1, 0)); }
+    else if (e.key === 'Enter') { if (activeIndex >= 0 && visible[activeIndex]) { e.preventDefault(); e.stopPropagation(); choose(visible[activeIndex]); } }
+    else if (e.key === 'Escape') { dropdown.classList.add('hidden'); }
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => { dropdown.classList.add('hidden'); input.value = labelFor(value); }, 150);
+  });
+  return {
+    getValue: () => value,
+    setOptions: (newOptions, newValue) => {
+      opts = newOptions.slice();
+      if (newValue !== undefined) value = newValue;
+      if (value && !opts.some(o => o.value === value)) opts = [{ value, label: value + ' (custom)' }].concat(opts);
+      input.value = labelFor(value);
+    }
+  };
+}
+
+/* ---------- Time-slot generation from settings ---------- */
+function generateTimeSlots(registerKey) {
+  const s = state.settings || DEFAULT_SETTINGS;
+  const mins = (s.slotMinutes && s.slotMinutes[registerKey]) || DEFAULT_SETTINGS.slotMinutes[registerKey] || 15;
+  const [sh, sm] = (s.clinicStart || '09:00').split(':').map(Number);
+  const [eh, em] = (s.clinicEnd || '20:00').split(':').map(Number);
+  let cur = sh * 60 + sm;
+  const end = eh * 60 + em;
+  const slots = [];
+  function fmt(mTotal) {
+    let h = Math.floor(mTotal / 60), m = mTotal % 60;
+    const ap = h >= 12 ? 'PM' : 'AM';
+    let h12 = h % 12; if (h12 === 0) h12 = 12;
+    return `${pad2(h12)}:${pad2(m)} ${ap}`;
+  }
+  while (cur + mins <= end) {
+    slots.push(`${fmt(cur)} – ${fmt(cur + mins)}`);
+    cur += mins;
+  }
+  return slots;
+}
+
+/* ---------- Simple select-options renderer ---------- */
+function optionsHtml(list, current, opts) {
+  opts = opts || {};
+  let out = opts.blank ? `<option value="">${escapeHtml(opts.blank)}</option>` : '';
+  out += list.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+  return out;
+}
+
+/* ============================================================
+   AUTH & SESSION
+   ============================================================ */
+function showConfigNeeded() {
+  document.getElementById('global-loader').classList.add('hidden');
+  document.body.insertAdjacentHTML('beforeend', `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--paper-50);">
+      <div class="card card-pad" style="max-width:480px;">
+        <div class="brand-logo" style="margin-bottom:16px;">
+          <div class="mark"><svg viewBox="0 0 24 24"><path class="cal-body" d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path class="cal-check" d="M8.5 14.5l2.5 2.5 5-5"/></svg></div>
+          <div><div class="wordmark">CareDesk</div></div>
+        </div>
+        <h3 style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;">Firebase config needed</h3>
+        <p style="font-size:13.5px;color:var(--slate-600);line-height:1.6;">This copy is running with placeholder Firebase keys. Open the file, find <code>firebaseConfig</code> near the top of the script, and paste in your real project's config. Full setup steps are in <b>README.md</b>.</p>
+      </div>
+    </div>
+  `);
+}
+function showLoginScreen(errMsg) {
+  document.getElementById('global-loader').classList.add('hidden');
+  document.getElementById('app-shell').classList.add('hidden');
+  const login = document.getElementById('login-screen');
+  login.classList.remove('hidden');
+  const errBox = document.getElementById('login-error');
+  if (errMsg) { errBox.textContent = errMsg; errBox.style.display = 'block'; } else { errBox.style.display = 'none'; }
+}
+function showAppShell() {
+  document.getElementById('global-loader').classList.add('hidden');
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-shell').classList.remove('hidden');
+}
+
+async function loadBranchContext(branchId) {
+  const branchSnap = await getDoc(doc(db, 'branches', branchId));
+  if (!branchSnap.exists()) throw new Error('Branch not found.');
+  const b = branchSnap.data();
+  state.branchId = branchId;
+  state.branchName = b.name || 'Branch';
+  state.branchActive = b.active !== false;
+  state.settings = Object.assign({}, DEFAULT_SETTINGS, b.settings || {}, {
+    slotMinutes: Object.assign({}, DEFAULT_SETTINGS.slotMinutes, (b.settings && b.settings.slotMinutes) || {}),
+    bookingSources: (b.settings && b.settings.bookingSources && b.settings.bookingSources.length) ? b.settings.bookingSources : DEFAULT_SETTINGS.bookingSources.slice(),
+    dentalTreatmentTypes: (b.settings && b.settings.dentalTreatmentTypes && b.settings.dentalTreatmentTypes.length) ? b.settings.dentalTreatmentTypes : DEFAULT_SETTINGS.dentalTreatmentTypes.slice()
+  });
+  const [docSnap, testSnap] = await Promise.all([
+    getDocs(collection(db, 'branches', branchId, 'doctors')),
+    getDocs(collection(db, 'branches', branchId, 'tests'))
+  ]);
+  state.doctors = docSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b2) => (a.name || '').localeCompare(b2.name || ''));
+  state.tests = testSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b2) => (a.name || '').localeCompare(b2.name || ''));
+}
+function exitBranch() {
+  state.branchId = null; state.branchName = ''; state.doctors = []; state.tests = []; state.settings = null;
+  renderShellChrome();
+  navigateTo('sa-branches');
+}
+
+async function loadUserProfileAndBegin(fbUser) {
+  try {
+    const snap = await getDoc(doc(db, 'users', fbUser.uid));
+    if (!snap.exists()) { await signOut(auth); showLoginScreen('No profile found for this account. Contact your administrator.'); return; }
+    const u = snap.data();
+    if (u.deleted) { await signOut(auth); showLoginScreen('This account has been removed.'); return; }
+    state.user = { uid: fbUser.uid, email: fbUser.email, name: u.name || fbUser.email, role: u.role, branchId: u.branchId || null, permissions: u.permissions || {} };
+    state.isSuperAdmin = u.role === ROLES.SUPERADMIN;
+    state.isAdmin = u.role === ROLES.ADMIN;
+    state.isAgent = u.role === ROLES.AGENT;
+
+    if (state.isSuperAdmin) {
+      // Super admin starts at the branches list; branch context is loaded only after they enter one.
+      showAppShell();
+      renderShellChrome();
+      navigateTo('sa-branches');
+    } else {
+      if (!u.branchId) { await signOut(auth); showLoginScreen('Your account is not linked to a branch. Contact your administrator.'); return; }
+      await loadBranchContext(u.branchId);
+      if (!state.branchActive) { await signOut(auth); showLoginScreen('Your branch has been deactivated. Contact your administrator.'); return; }
+      showAppShell();
+      renderShellChrome();
+      navigateTo('dashboard');
+    }
+  } catch (err) {
+    console.error(err);
+    await signOut(auth).catch(() => {});
+    showLoginScreen('Something went wrong loading your account. Please try again.');
+  }
+}
+
+function wireAuthListeners() {
+  onAuthStateChanged(auth, (fbUser) => {
+    if (fbUser) loadUserProfileAndBegin(fbUser);
+    else showLoginScreen();
+  });
+  document.getElementById('login-card').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const pw = document.getElementById('login-password').value;
+    const btn = document.getElementById('login-submit-btn');
+    setBtnLoading(btn, true, 'Signing in…');
+    try {
+      await signInWithEmailAndPassword(auth, email, pw);
+    } catch (err) {
+      setBtnLoading(btn, false);
+      const msg = (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found')
+        ? 'Incorrect email or password.' : (err.message || 'Sign-in failed.');
+      showLoginScreen(msg);
+    }
+  });
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await signOut(auth);
+    state.user = null; state.branchId = null; state.branchName = ''; state.registerCache = {};
+  });
+  document.getElementById('menu-toggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebar-scrim').classList.toggle('show');
+  });
+  document.getElementById('sidebar-scrim').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-scrim').classList.remove('show');
+  });
+}
+
+/* ============================================================
+   NAVIGATION / SHELL CHROME
+   ============================================================ */
+const NAV_ITEMS_SUPERADMIN_TOP = [
+  { view: 'sa-branches', label: 'Branches', icon: 'building2' }
+];
+const NAV_ITEMS_ADMIN = [
+  { view: 'dashboard', label: 'Dashboard', icon: 'grid' },
+  { view: 'doctor', label: REGISTERS.doctor.label, icon: REGISTERS.doctor.icon },
+  { view: 'test', label: REGISTERS.test.label, icon: REGISTERS.test.icon },
+  { view: 'homeCollection', label: REGISTERS.homeCollection.label, icon: REGISTERS.homeCollection.icon },
+  { view: 'dental', label: REGISTERS.dental.label, icon: REGISTERS.dental.icon },
+  { view: 'masters', label: 'Masters', icon: 'building' },
+  { view: 'users', label: 'User Management', icon: 'users' },
+  { view: 'reports', label: 'Reports', icon: 'barChart' },
+  { view: 'settings', label: 'Settings', icon: 'settings' }
+];
+function navItemsForAgent() {
+  const perms = (state.user && state.user.permissions) || {};
+  const items = [{ view: 'dashboard', label: 'Dashboard', icon: 'grid' }];
+  REGISTER_KEYS.forEach(k => { if (perms[k]) items.push({ view: k, label: REGISTERS[k].label, icon: REGISTERS[k].icon }); });
+  return items;
+}
+function currentNavItems() {
+  if (state.isSuperAdmin && !state.branchId) return NAV_ITEMS_SUPERADMIN_TOP;
+  if (state.isAgent) return navItemsForAgent();
+  return NAV_ITEMS_ADMIN;
+}
+function renderSideNav() {
+  const items = currentNavItems();
+  const nav = document.getElementById('side-nav');
+  nav.innerHTML = items.map(it => `<div class="nav-item ${state.view === it.view ? 'active' : ''}" data-nav="${it.view}">${icon(it.icon)}<span>${escapeHtml(it.label)}</span></div>`).join('');
+  nav.querySelectorAll('.nav-item').forEach(el => el.addEventListener('click', () => navigateTo(el.dataset.nav)));
+}
+function renderBranchChip() {
+  const slot = document.getElementById('branch-chip-slot');
+  if (state.isSuperAdmin && !state.branchId) { slot.innerHTML = ''; return; }
+  slot.innerHTML = `
+    <div class="branch-chip">${icon('building2')}<div><b>${escapeHtml(state.branchName)}</b>${state.isSuperAdmin ? '<span style="opacity:.75;">Super Admin view</span>' : ''}</div></div>
+    ${state.isSuperAdmin ? `<div style="margin:-8px 20px 14px;"><button class="btn btn-ghost btn-sm" id="exit-branch-btn" style="color:var(--teal-400);">${icon('arrowLeft')}All Branches</button></div>` : ''}
+  `;
+  const exitBtn = document.getElementById('exit-branch-btn');
+  if (exitBtn) exitBtn.addEventListener('click', exitBranch);
+}
+function renderShellChrome() {
+  renderSideNav();
+  renderBranchChip();
+  document.getElementById('user-avatar').textContent = initialsOf(state.user.name);
+  document.getElementById('user-name').textContent = state.user.name;
+  document.getElementById('user-role').textContent = state.user.role;
+}
+function renderTopbarCrumb() {
+  const t = VIEW_TITLES[state.view] || [state.view, ''];
+  const title = REGISTERS[state.view] ? REGISTERS[state.view].label : t[0];
+  document.getElementById('crumb-title').textContent = title;
+  document.getElementById('crumb-sub').textContent = t[1] || '';
+  document.getElementById('topbar-actions').innerHTML = '';
+}
+async function renderView(view, params) {
+  params = params || {};
+  const content = document.getElementById('content');
+  content.innerHTML = `<div class="u-center" style="padding:90px 0;"><span class="loader-ring"></span></div>`;
+  try {
+    if (view === 'dashboard') await renderDashboardView(content);
+    else if (view === 'sa-branches') await renderBranchesListView(content);
+    else if (REGISTERS[view]) await renderRegisterListView(content, view);
+    else if (view === 'masters') await renderMastersView(content);
+    else if (view === 'users') await renderUserManagementView(content);
+    else if (view === 'reports') await renderReportsView(content);
+    else if (view === 'settings') await renderSettingsView(content);
+    else if (view === 'register-form') await renderRegisterFormView(content, params.registerKey, params.id);
+    else if (view === 'recycle-bin') await renderRecycleBinView(content, params.kind);
+    else content.innerHTML = `<div class="empty-state"><h4>Not found</h4></div>`;
+  } catch (err) {
+    console.error(err);
+    content.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Something went wrong</h4><p>${escapeHtml(err.message || 'Please try again.')}</p></div>`;
+  }
+}
+function navigateTo(view, params) {
+  state.view = view;
+  state.viewParams = params || {};
+  renderSideNav();
+  renderTopbarCrumb();
+  renderView(view, state.viewParams);
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-scrim').classList.remove('show');
+  window.scrollTo(0, 0);
+}
+
+/* ============================================================
+   SUPER ADMIN — BRANCHES
+   ============================================================ */
+async function renderBranchesListView(content) {
+  const snap = await getDocs(query(collection(db, 'branches'), orderBy('name')));
+  const branches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  content.innerHTML = `
+    <div class="u-between" style="margin-bottom:18px;flex-wrap:wrap;gap:12px;">
+      <p class="u-muted" style="font-size:13.5px;max-width:520px;">Each branch has its own doctors, tests, bookings and staff. Enter a branch to manage its registers, or use Manage to configure staff and bulk-delete tools.</p>
+      <button class="btn btn-primary" id="new-branch-btn">${icon('plus')}New Branch</button>
+    </div>
+    ${branches.length ? `<div class="stat-grid">${branches.map(b => branchCardHtml(b)).join('')}</div>` : `
+      <div class="empty-state">${icon('building2')}<h4>No branches yet</h4><p>Create your first branch to start taking bookings.</p></div>
+    `}
+  `;
+  document.getElementById('new-branch-btn').addEventListener('click', openCreateBranchModal);
+  content.querySelectorAll('[data-enter]').forEach(el => el.addEventListener('click', () => enterBranch(el.dataset.enter)));
+  content.querySelectorAll('[data-manage]').forEach(el => el.addEventListener('click', () => openManageBranchModal(el.dataset.manage)));
+}
+function branchCardHtml(b) {
+  return `
+    <div class="stat-card accent-${b.active === false ? 'amber' : 'teal'}">
+      <div class="u-between">
+        <span class="lbl">${icon('building2')}${escapeHtml(b.name)}</span>
+        <span class="badge ${b.active === false ? 'inactive' : 'active'}">${b.active === false ? 'Inactive' : 'Active'}</span>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;">
+        <button class="btn btn-secondary btn-sm" data-enter="${b.id}" style="flex:1;">${icon('chevronRight')}Enter</button>
+        <button class="btn btn-ghost btn-sm" data-manage="${b.id}">${icon('settings')}Manage</button>
+      </div>
+    </div>
+  `;
+}
+async function enterBranch(branchId) {
+  try {
+    await loadBranchContext(branchId);
+    renderShellChrome();
+    navigateTo('dashboard');
+  } catch (err) { toast(err.message || 'Could not open branch.', 'error'); }
+}
+function openCreateBranchModal() {
+  openModal(`
+    <div class="modal-head"><h3>New Branch</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-body">
+      <div class="field-wrap"><label>Branch Name <span class="req">*</span></label><input type="text" id="nb-name" placeholder="e.g. Gulshan Diagnostic Center"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="nb-save">Create Branch</button></div>
+  `);
+  document.getElementById('m-x').addEventListener('click', closeModal);
+  document.getElementById('m-cancel').addEventListener('click', closeModal);
+  document.getElementById('nb-save').addEventListener('click', async () => {
+    const name = document.getElementById('nb-name').value.trim();
+    if (!name) { toast('Branch name is required.', 'error'); return; }
+    const btn = document.getElementById('nb-save');
+    setBtnLoading(btn, true, 'Creating…');
+    try {
+      await addDoc(collection(db, 'branches'), { name, active: true, createdAt: serverTimestamp(), createdBy: state.user.uid, settings: {} });
+      closeModal(); toast('Branch created.', 'success');
+      navigateTo('sa-branches');
+    } catch (err) { setBtnLoading(btn, false); toast(err.message || 'Could not create branch.', 'error'); }
+  });
+}
+async function openManageBranchModal(branchId) {
+  const snap = await getDoc(doc(db, 'branches', branchId));
+  if (!snap.exists()) { toast('Branch not found.', 'error'); return; }
+  const b = { id: branchId, ...snap.data() };
+  const adminsSnap = await getDocs(query(collection(db, 'users'), where('branchId', '==', branchId), where('role', '==', ROLES.ADMIN)));
+  const admins = adminsSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => !a.deleted);
+  openModal(`
+    <div class="modal-head"><h3>Manage Branch</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-body">
+      <div class="field-wrap" style="margin-bottom:14px;"><label>Branch Name</label><input type="text" id="mb-name" value="${escapeHtml(b.name)}"></div>
+      <div class="checkbox-row" style="margin-bottom:18px;"><input type="checkbox" id="mb-active" ${b.active !== false ? 'checked' : ''}><label for="mb-active">Branch is active (staff can sign in)</label></div>
+      <button class="btn btn-secondary btn-sm" id="mb-save-btn" style="margin-bottom:20px;">${icon('check')}Save Changes</button>
+      <div class="divider"></div>
+      <span class="section-label">Branch Admins</span>
+      <div id="mb-admins-list">${admins.map(a => branchAdminRowHtml(a)).join('') || '<p class="u-muted" style="font-size:13px;">No admins yet.</p>'}</div>
+      <button class="btn btn-secondary btn-sm" id="mb-add-admin-btn" style="margin-top:8px;">${icon('userPlus')}Add Admin</button>
+      <div class="divider"></div>
+      <span class="section-label">Bulk Delete — Register-wise (Super Admin only)</span>
+      <p class="hint" style="margin-bottom:10px;">Permanently deletes bookings in a register within a date range. This bypasses the recycle bin and cannot be undone.</p>
+      <div class="form-grid cols-3" style="align-items:end;">
+        <div class="field-wrap"><label>Register</label><select id="bd-register">${REGISTER_KEYS.map(k => `<option value="${k}">${REGISTERS[k].short}</option>`).join('')}</select></div>
+        <div class="field-wrap"><label>From</label><input type="date" id="bd-from"></div>
+        <div class="field-wrap"><label>To</label><input type="date" id="bd-to"></div>
+      </div>
+      <button class="btn btn-danger btn-sm" id="bd-run-btn" style="margin-top:12px;">${icon('trash')}Bulk Delete</button>
+      <div class="divider"></div>
+      <span class="section-label" style="color:var(--red-600);">Danger Zone</span>
+      <button class="btn btn-danger btn-sm" id="mb-delete-branch-btn">${icon('trash')}Delete This Branch Entirely</button>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Close</button></div>
+  `, { wide: true });
+  document.getElementById('m-x').addEventListener('click', closeModal);
+  document.getElementById('m-cancel').addEventListener('click', closeModal);
+  document.getElementById('mb-save-btn').addEventListener('click', async () => {
+    const name = document.getElementById('mb-name').value.trim();
+    const active = document.getElementById('mb-active').checked;
+    if (!name) { toast('Branch name is required.', 'error'); return; }
+    try { await updateDoc(doc(db, 'branches', branchId), { name, active }); toast('Branch updated.', 'success'); navigateTo('sa-branches'); closeModal(); }
+    catch (err) { toast(err.message || 'Update failed.', 'error'); }
+  });
+  document.getElementById('mb-add-admin-btn').addEventListener('click', () => openCreateStaffModal(branchId, ROLES.ADMIN));
+  content_wireBranchAdminRowButtons(branchId);
+  document.getElementById('bd-run-btn').addEventListener('click', async () => {
+    const registerKey = document.getElementById('bd-register').value;
+    const from = document.getElementById('bd-from').value, to = document.getElementById('bd-to').value;
+    if (!from || !to) { toast('Pick a date range.', 'error'); return; }
+    const ok = await confirmDialog({ title: 'Confirm bulk delete', danger: true, confirmLabel: 'Delete Permanently', message: `This will permanently delete all <b>${escapeHtml(REGISTERS[registerKey].label)}</b> bookings between <b>${formatDateHuman(from)}</b> and <b>${formatDateHuman(to)}</b> in <b>${escapeHtml(b.name)}</b>. This cannot be undone.` });
+    if (!ok) return;
+    // Note: confirmDialog already closed the modal before resolving, so there is no
+    // button left in the DOM to show a loading state on — an immediate toast is the
+    // feedback instead.
+    toast('Deleting…', 'info');
+    try {
+      const n = await bulkDeleteRegisterByDateRange(branchId, registerKey, from, to);
+      toast(`${n} booking(s) permanently deleted.`, 'success');
+    } catch (err) { toast(err.message || 'Bulk delete failed.', 'error'); }
+  });
+  document.getElementById('mb-delete-branch-btn').addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: 'Delete branch entirely?', danger: true, confirmLabel: 'Delete Everything', message: `This permanently deletes <b>${escapeHtml(b.name)}</b> — all its bookings, doctors, tests and staff accounts. This cannot be undone.` });
+    if (!ok) return;
+    toast('Deleting branch…', 'info');
+    try { await deleteBranchCascade(branchId); toast('Branch deleted.', 'success'); navigateTo('sa-branches'); }
+    catch (err) { toast(err.message || 'Delete failed.', 'error'); }
+  });
+}
+function branchAdminRowHtml(a) {
+  return `
+    <div class="u-between" style="padding:9px 0;border-bottom:1px solid var(--line-100);">
+      <div><div style="font-size:13.5px;font-weight:600;">${escapeHtml(a.name)}</div><div class="u-muted" style="font-size:12px;">${escapeHtml(a.email)}</div></div>
+      <div class="u-flex u-gap-8">
+        <button class="icon-btn" data-reset-pw="${a.id}" data-email="${escapeHtml(a.email)}" title="Send password reset">${icon('mail')}</button>
+        <button class="icon-btn danger" data-remove-admin="${a.id}" data-name="${escapeHtml(a.name)}" title="Remove">${icon('trash')}</button>
+      </div>
+    </div>
+  `;
+}
+function content_wireBranchAdminRowButtons(branchId) {
+  document.querySelectorAll('[data-reset-pw]').forEach(el => el.addEventListener('click', async () => {
+    try { await sendPasswordResetEmail(auth, el.dataset.email); toast('Password reset email sent.', 'success'); } catch (err) { toast(err.message, 'error'); }
+  }));
+  document.querySelectorAll('[data-remove-admin]').forEach(el => el.addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: 'Remove admin?', danger: true, confirmLabel: 'Move to Recycle Bin', message: `${escapeHtml(el.dataset.name)} will be moved to the recycle bin and immediately lose access. A super admin can restore them later.` });
+    if (!ok) return;
+    try { await softDeleteUser(el.dataset.removeAdmin); toast('Admin moved to recycle bin.', 'success'); openManageBranchModal(branchId); } catch (err) { toast(err.message, 'error'); }
+  }));
+}
+async function bulkDeleteRegisterByDateRange(branchId, registerKey, fromISO, toISO) {
+  const colRef = collection(db, 'branches', branchId, REGISTERS[registerKey].collection);
+  const snap = await getDocs(query(colRef, where('appointmentDate', '>=', fromISO), where('appointmentDate', '<=', toISO)));
+  if (snap.empty) return 0;
+  const docs = snap.docs;
+  for (let i = 0; i < docs.length; i += 450) {
+    const batch = writeBatch(db);
+    docs.slice(i, i + 450).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+  return docs.length;
+}
+async function deleteAllInSubcollection(branchId, subName) {
+  const snap = await getDocs(collection(db, 'branches', branchId, subName));
+  const docs = snap.docs;
+  for (let i = 0; i < docs.length; i += 450) {
+    const batch = writeBatch(db);
+    docs.slice(i, i + 450).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+async function deleteBranchCascade(branchId) {
+  const subs = ['doctors', 'tests', 'counters', 'monthlySummaries', 'meta']
+    .concat(REGISTER_KEYS.map(k => REGISTERS[k].collection));
+  for (const s of subs) await deleteAllInSubcollection(branchId, s);
+  const usersSnap = await getDocs(query(collection(db, 'users'), where('branchId', '==', branchId)));
+  const uDocs = usersSnap.docs;
+  for (let i = 0; i < uDocs.length; i += 450) {
+    const batch = writeBatch(db);
+    uDocs.slice(i, i + 450).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+  await deleteDoc(doc(db, 'branches', branchId));
+}
+
+/* ============================================================
+   DATA LAYER — USERS (agents & branch admins)
+   ============================================================ */
+function generateTempPassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  let out = '';
+  for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+async function createStaffAccount({ name, email, role, branchId, permissions }) {
+  const tempPassword = generateTempPassword();
+  const sAuth = getSecondaryAuth();
+  const cred = await createUserWithEmailAndPassword(sAuth, email, tempPassword);
+  const uid = cred.user.uid;
+  await setDoc(doc(db, 'users', uid), {
+    name, email, role, branchId,
+    permissions: permissions || {},
+    deleted: false, createdAt: serverTimestamp(), createdBy: state.user.uid
+  });
+  await signOut(sAuth);
+  return { uid, tempPassword };
+}
+async function updateStaffAccount(uid, { name, permissions }) {
+  const payload = { name };
+  if (permissions) payload.permissions = permissions;
+  await updateDoc(doc(db, 'users', uid), payload);
+}
+async function softDeleteUser(uid) {
+  await updateDoc(doc(db, 'users', uid), { deleted: true, deletedAt: serverTimestamp(), deletedBy: state.user.uid, deletedByName: state.user.name });
+}
+async function restoreUser(uid) {
+  await updateDoc(doc(db, 'users', uid), { deleted: false, deletedAt: null, deletedBy: null, deletedByName: null });
+}
+async function purgeUserPermanently(uid) {
+  await deleteDoc(doc(db, 'users', uid));
+}
+async function fetchBranchAgents(branchId, includeDeleted) {
+  const snap = await getDocs(query(collection(db, 'users'), where('branchId', '==', branchId)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(u => u.role === ROLES.AGENT && (includeDeleted ? true : !u.deleted));
+}
+async function fetchDeletedBranchUsers(branchId) {
+  const snap = await getDocs(query(collection(db, 'users'), where('branchId', '==', branchId)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => u.deleted);
+}
+
+/* ============================================================
+   DATA LAYER — MASTERS (doctors, tests)
+   ============================================================ */
+async function addMaster(kind, data) {
+  const ref = await addDoc(collection(db, 'branches', state.branchId, kind), data);
+  const list = kind === 'doctors' ? state.doctors : state.tests;
+  list.push({ id: ref.id, ...data });
+  list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  return ref.id;
+}
+async function updateMaster(kind, id, data) {
+  await updateDoc(doc(db, 'branches', state.branchId, kind, id), data);
+  const list = kind === 'doctors' ? state.doctors : state.tests;
+  const idx = list.findIndex(x => x.id === id);
+  if (idx > -1) list[idx] = { id, ...data };
+}
+async function deleteMaster(kind, id) {
+  await deleteDoc(doc(db, 'branches', state.branchId, kind, id));
+  const list = kind === 'doctors' ? state.doctors : state.tests;
+  const idx = list.findIndex(x => x.id === id);
+  if (idx > -1) list.splice(idx, 1);
+}
+
+/* ============================================================
+   DATA LAYER — BOOKINGS (generic across the 4 registers)
+   ============================================================ */
+async function nextBookingId(registerKey) {
+  const counterRef = doc(db, 'branches', state.branchId, 'counters', registerKey);
+  const seq = await runTransaction(db, async (tx) => {
+    const snap = await tx.get(counterRef);
+    const next = (snap.exists() ? snap.data().seq : 0) + 1;
+    tx.set(counterRef, { seq: next }, { merge: true });
+    return next;
+  });
+  return `${REGISTERS[registerKey].idPrefix}-${String(seq).padStart(6, '0')}`;
+}
+async function createBooking(registerKey, data) {
+  const bookingId = await nextBookingId(registerKey);
+  const payload = Object.assign({}, data, {
+    bookingId,
+    patientNameLower: (data.patientName || '').toLowerCase(),
+    deleted: false,
+    bookedBy: state.user.uid,
+    bookedByName: state.user.name,
+    bookedOn: serverTimestamp(),
+    createdAt: serverTimestamp()
+  });
+  const ref = await addDoc(collection(db, 'branches', state.branchId, REGISTERS[registerKey].collection), payload);
+  await logBookingHistory(registerKey, ref.id, 'created', null);
+  return { id: ref.id, bookingId };
+}
+async function updateBooking(registerKey, id, data, oldData) {
+  const payload = Object.assign({}, data, {
+    patientNameLower: (data.patientName || '').toLowerCase(),
+    updatedAt: serverTimestamp(),
+    updatedBy: state.user.uid,
+    updatedByName: state.user.name
+  });
+  await updateDoc(doc(db, 'branches', state.branchId, REGISTERS[registerKey].collection, id), payload);
+  const changes = diffBookingFields(oldData, data);
+  if (changes.length) await logBookingHistory(registerKey, id, 'updated', changes);
+}
+async function softDeleteBooking(registerKey, id) {
+  await updateDoc(doc(db, 'branches', state.branchId, REGISTERS[registerKey].collection, id), {
+    deleted: true, deletedAt: serverTimestamp(), deletedBy: state.user.uid, deletedByName: state.user.name
+  });
+  await logBookingHistory(registerKey, id, 'deleted', null);
+}
+async function restoreBooking(registerKey, id) {
+  await updateDoc(doc(db, 'branches', state.branchId, REGISTERS[registerKey].collection, id), {
+    deleted: false, deletedAt: null, deletedBy: null, deletedByName: null
+  });
+  await logBookingHistory(registerKey, id, 'restored', null);
+}
+async function purgeBookingPermanently(registerKey, id) {
+  await deleteDoc(doc(db, 'branches', state.branchId, REGISTERS[registerKey].collection, id));
+}
+async function getBookingDoc(registerKey, id) {
+  const snap = await getDoc(doc(db, 'branches', state.branchId, REGISTERS[registerKey].collection, id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+/* ---------- Audit trail: every create/edit/delete/restore is logged, field by field ---------- */
+const HISTORY_FIELD_LABELS = {
+  appointmentDate: 'Appointment Date', timeSlot: 'Time Slot', patientName: 'Patient Name',
+  mobileNumber: 'Mobile Number', priority: 'Priority', source: 'Booking Source', status: 'Status',
+  remarks: 'Remarks', doctorName: 'Doctor Name', specialty: 'Specialty', treatmentType: 'Treatment Type',
+  requestedTests: 'Requested Tests', address: 'Address', area: 'Area / Locality', pin: 'PIN Code'
+};
+function diffBookingFields(oldData, newData) {
+  const changes = [];
+  Object.keys(HISTORY_FIELD_LABELS).forEach((key) => {
+    if (!(key in newData) && !(oldData && key in oldData)) return; // field not relevant to this register
+    let ov = oldData ? oldData[key] : undefined;
+    let nv = newData[key];
+    if (Array.isArray(ov) || Array.isArray(nv)) { ov = (ov || []).join(', '); nv = (nv || []).join(', '); }
+    ov = (ov === undefined || ov === null) ? '' : String(ov);
+    nv = (nv === undefined || nv === null) ? '' : String(nv);
+    if (ov !== nv) changes.push({ field: key, label: HISTORY_FIELD_LABELS[key], from: ov || '—', to: nv || '—' });
+  });
+  return changes;
+}
+async function logBookingHistory(registerKey, bookingDocId, action, changes) {
+  try {
+    await addDoc(collection(db, 'branches', state.branchId, REGISTERS[registerKey].collection, bookingDocId, 'history'), {
+      action, changes: changes || null, by: state.user.uid, byName: state.user.name, at: serverTimestamp()
+    });
+  } catch (err) { console.error('History log failed:', err); }
+}
+async function fetchBookingHistory(registerKey, bookingDocId) {
+  const snap = await getDocs(query(collection(db, 'branches', state.branchId, REGISTERS[registerKey].collection, bookingDocId, 'history'), orderBy('at', 'desc')));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// Fetch rows for a register's list view. Search and date-range are mutually
+// exclusive at the query level (both filter on a single field each) so that
+// no Firestore composite indexes are ever required for this app.
+async function fetchRegisterRows(registerKey, { dateFrom, dateTo, searchTerm, includeDeleted }) {
+  const colRef = collection(db, 'branches', state.branchId, REGISTERS[registerKey].collection);
+  let rows = [];
+  const term = (searchTerm || '').trim();
+  if (term) {
+    const looksLikeId = new RegExp('^' + REGISTERS[registerKey].idPrefix + '-?\\d+$', 'i').test(term);
+    if (looksLikeId) {
+      const normalized = term.toUpperCase().replace(/^([A-Z]+)-?(\d+)$/, (m, p, n) => `${p}-${n.padStart(6, '0')}`);
+      const snap = await getDocs(query(colRef, where('bookingId', '==', normalized), limit(20)));
+      rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } else {
+      const termLower = term.toLowerCase();
+      const [nameSnap, mobileSnap] = await Promise.all([
+        getDocs(query(colRef, where('patientNameLower', '>=', termLower), where('patientNameLower', '<=', termLower + '\uf8ff'), limit(60))),
+        getDocs(query(colRef, where('mobileNumber', '>=', term), where('mobileNumber', '<=', term + '\uf8ff'), limit(60)))
+      ]);
+      const map = new Map();
+      nameSnap.docs.forEach(d => map.set(d.id, { id: d.id, ...d.data() }));
+      mobileSnap.docs.forEach(d => map.set(d.id, { id: d.id, ...d.data() }));
+      rows = Array.from(map.values());
+    }
+  } else {
+    const snap = await getDocs(query(colRef, where('appointmentDate', '>=', dateFrom), where('appointmentDate', '<=', dateTo), limit(500)));
+    rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+  rows = rows.filter(r => (includeDeleted ? true : !r.deleted));
+  rows.sort((a, b) => (a.appointmentDate + (a.timeSlot || '')).localeCompare(b.appointmentDate + (b.timeSlot || '')));
+  return rows;
+}
+async function fetchDeletedRegisterRows(registerKey, dateFrom, dateTo) {
+  const rows = await fetchRegisterRows(registerKey, { dateFrom, dateTo, includeDeleted: true });
+  return rows.filter(r => r.deleted);
+}
+
+
+/* ============================================================
+   USER MANAGEMENT (Agents) — Admin & Super-Admin(in-branch)
+   ============================================================ */
+function mapAuthError(err) {
+  const code = err && err.code;
+  if (code === 'auth/email-already-in-use') return 'That email is already registered.';
+  if (code === 'auth/invalid-email') return 'That email address looks invalid.';
+  if (code === 'auth/weak-password') return 'Password is too weak.';
+  return (err && err.message) || 'Something went wrong.';
+}
+async function renderUserManagementView(content) {
+  const agents = await fetchBranchAgents(state.branchId);
+  content.innerHTML = `
+    <div class="u-between" style="margin-bottom:18px;flex-wrap:wrap;gap:12px;">
+      <p class="u-muted" style="font-size:13.5px;max-width:480px;">Agents can be granted access to one or more booking registers.</p>
+      <div class="u-flex u-gap-8">
+        <button class="btn btn-secondary" id="um-recycle-btn">${icon('trash')}Recycle Bin</button>
+        <button class="btn btn-primary" id="um-add-btn">${icon('userPlus')}Add Agent</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Email</th><th>Register Access</th><th></th></tr></thead>
+      <tbody>${agents.length ? agents.map(a => agentRowHtml(a)).join('') : `<tr><td colspan="4"><div class="empty-state">${icon('users')}<h4>No agents yet</h4><p>Add your first front-desk agent to start taking bookings.</p></div></td></tr>`}</tbody>
+    </table></div>
+  `;
+  document.getElementById('um-add-btn').addEventListener('click', () => openCreateStaffModal(state.branchId, ROLES.AGENT));
+  document.getElementById('um-recycle-btn').addEventListener('click', () => navigateTo('recycle-bin', { kind: 'users' }));
+  wireAgentRowButtons();
+}
+function agentRowHtml(a) {
+  const regBadges = REGISTER_KEYS.filter(k => a.permissions && a.permissions[k]).map(k => `<span class="pill active" style="cursor:default;">${REGISTERS[k].short}</span>`).join(' ') || '<span class="u-muted" style="font-size:12px;">No access yet</span>';
+  return `<tr>
+    <td style="font-weight:600;">${escapeHtml(a.name)}</td>
+    <td>${escapeHtml(a.email)}</td>
+    <td><div style="display:flex;gap:6px;flex-wrap:wrap;">${regBadges}</div></td>
+    <td><div class="u-flex u-gap-8">
+      <button class="icon-btn" data-edit-agent="${a.id}" title="Edit">${icon('edit')}</button>
+      <button class="icon-btn" data-reset-agent="${a.id}" data-email="${escapeHtml(a.email)}" title="Send password reset">${icon('mail')}</button>
+      <button class="icon-btn danger" data-remove-agent="${a.id}" data-name="${escapeHtml(a.name)}" title="Remove">${icon('trash')}</button>
+    </div></td>
+  </tr>`;
+}
+function wireAgentRowButtons() {
+  document.querySelectorAll('[data-edit-agent]').forEach(el => el.addEventListener('click', () => openEditAgentModal(el.dataset.editAgent)));
+  document.querySelectorAll('[data-reset-agent]').forEach(el => el.addEventListener('click', async () => {
+    try { await sendPasswordResetEmail(auth, el.dataset.email); toast('Password reset email sent.', 'success'); } catch (err) { toast(mapAuthError(err), 'error'); }
+  }));
+  document.querySelectorAll('[data-remove-agent]').forEach(el => el.addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: 'Remove agent?', danger: true, confirmLabel: 'Move to Recycle Bin', message: `${escapeHtml(el.dataset.name)} will be moved to the recycle bin and lose access immediately. You can restore them later.` });
+    if (!ok) return;
+    try { await softDeleteUser(el.dataset.removeAgent); toast('Agent moved to recycle bin.', 'success'); navigateTo('users'); } catch (err) { toast(mapAuthError(err), 'error'); }
+  }));
+}
+function openCreateStaffModal(branchId, role) {
+  const isAgent = role === ROLES.AGENT;
+  openModal(`
+    <div class="modal-head"><h3>Add ${isAgent ? 'Agent' : 'Branch Admin'}</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field-wrap"><label>Full Name <span class="req">*</span></label><input type="text" id="cs-name" placeholder="e.g. Farhana Akter"></div>
+        <div class="field-wrap"><label>Email <span class="req">*</span></label><input type="email" id="cs-email" placeholder="name@example.com"></div>
+      </div>
+      ${isAgent ? `
+        <div class="divider"></div>
+        <span class="section-label">Register Access</span>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;">
+          ${REGISTER_KEYS.map(k => `<label class="checkbox-row"><input type="checkbox" class="cs-perm" value="${k}">${escapeHtml(REGISTERS[k].label)}</label>`).join('')}
+        </div>
+      ` : `<p class="hint" style="margin-top:10px;">Branch admins get full access to every register, masters, reports and settings in this branch.</p>`}
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="cs-save">${icon('userPlus')}Create Account</button></div>
+  `);
+  document.getElementById('m-x').addEventListener('click', closeModal);
+  document.getElementById('m-cancel').addEventListener('click', closeModal);
+  document.getElementById('cs-save').addEventListener('click', async () => {
+    const name = document.getElementById('cs-name').value.trim();
+    const email = document.getElementById('cs-email').value.trim();
+    if (!name) { toast('Name is required.', 'error'); return; }
+    if (!validateEmail(email)) { toast('Enter a valid email address.', 'error'); return; }
+    const permissions = {};
+    if (isAgent) document.querySelectorAll('.cs-perm:checked').forEach(el => { permissions[el.value] = true; });
+    const btn = document.getElementById('cs-save');
+    setBtnLoading(btn, true, 'Creating…');
+    try {
+      const { tempPassword } = await createStaffAccount({ name, email, role, branchId, permissions });
+      closeModal();
+      showTempPasswordModal(name, email, tempPassword);
+    } catch (err) { setBtnLoading(btn, false); toast(mapAuthError(err), 'error'); }
+  });
+}
+function showTempPasswordModal(name, email, tempPassword) {
+  openModal(`
+    <div class="modal-head"><h3>Account Created</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-body">
+      <p style="font-size:13.5px;color:var(--slate-600);margin-bottom:14px;">Share these sign-in details with <b>${escapeHtml(name)}</b>. They should change the password after first sign-in.</p>
+      <div class="card card-pad" style="background:var(--paper-50);">
+        <div style="font-size:12px;color:var(--slate-500);">Email</div><div style="font-family:var(--font-mono);font-size:14px;margin-bottom:10px;">${escapeHtml(email)}</div>
+        <div style="font-size:12px;color:var(--slate-500);">Temporary Password</div><div style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--teal-700);">${escapeHtml(tempPassword)}</div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-primary" id="tp-done">Done</button></div>
+  `, { persistent: true });
+  const done = () => { closeModal(); if (state.view === 'users') navigateTo('users'); };
+  document.getElementById('m-x').addEventListener('click', done);
+  document.getElementById('tp-done').addEventListener('click', done);
+}
+async function openEditAgentModal(uid) {
+  const snap = await getDoc(doc(db, 'users', uid));
+  if (!snap.exists()) { toast('Agent not found.', 'error'); return; }
+  const a = snap.data();
+  openModal(`
+    <div class="modal-head"><h3>Edit Agent</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-body">
+      <div class="field-wrap" style="margin-bottom:14px;"><label>Full Name</label><input type="text" id="ea-name" value="${escapeHtml(a.name)}"></div>
+      <div class="field-wrap" style="margin-bottom:14px;"><label>Email</label><input type="email" value="${escapeHtml(a.email)}" disabled></div>
+      <span class="section-label">Register Access</span>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;">
+        ${REGISTER_KEYS.map(k => `<label class="checkbox-row"><input type="checkbox" class="ea-perm" value="${k}" ${a.permissions && a.permissions[k] ? 'checked' : ''}>${escapeHtml(REGISTERS[k].label)}</label>`).join('')}
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="ea-save">Save Changes</button></div>
+  `);
+  document.getElementById('m-x').addEventListener('click', closeModal);
+  document.getElementById('m-cancel').addEventListener('click', closeModal);
+  document.getElementById('ea-save').addEventListener('click', async () => {
+    const name = document.getElementById('ea-name').value.trim();
+    if (!name) { toast('Name is required.', 'error'); return; }
+    const permissions = {};
+    document.querySelectorAll('.ea-perm:checked').forEach(el => { permissions[el.value] = true; });
+    const btn = document.getElementById('ea-save');
+    setBtnLoading(btn, true, 'Saving…');
+    try { await updateStaffAccount(uid, { name, permissions }); closeModal(); toast('Agent updated.', 'success'); navigateTo('users'); }
+    catch (err) { setBtnLoading(btn, false); toast(mapAuthError(err), 'error'); }
+  });
+}
+
+/* ============================================================
+   MASTERS — Doctors & Tests
+   ============================================================ */
+async function renderMastersView(content) {
+  const tab = (state.viewParams && state.viewParams.tab) || 'doctors';
+  content.innerHTML = `
+    <div class="pill-filters" style="margin-bottom:18px;">
+      <button class="pill ${tab === 'doctors' ? 'active' : ''}" data-mtab="doctors">Doctors (${state.doctors.length})</button>
+      <button class="pill ${tab === 'tests' ? 'active' : ''}" data-mtab="tests">Tests (${state.tests.length})</button>
+    </div>
+    <div id="masters-body"></div>
+  `;
+  content.querySelectorAll('[data-mtab]').forEach(el => el.addEventListener('click', () => navigateTo('masters', { tab: el.dataset.mtab })));
+  renderMastersBody(tab);
+}
+function renderMastersBody(tab) {
+  const body = document.getElementById('masters-body');
+  const isDoctors = tab === 'doctors';
+  const list = isDoctors ? state.doctors : state.tests;
+  body.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-toolbar"><span class="u-muted" style="font-size:13px;">${list.length} ${isDoctors ? 'doctor(s)' : 'test(s)'}</span><button class="btn btn-primary btn-sm" id="mm-add">${icon('plus')}Add ${isDoctors ? 'Doctor' : 'Test'}</button></div>
+      <table><thead><tr><th>Name</th>${isDoctors ? '<th>Specialty</th>' : ''}<th></th></tr></thead>
+      <tbody>${list.length ? list.map(item => `
+        <tr><td style="font-weight:600;">${escapeHtml(item.name)}</td>${isDoctors ? `<td>${escapeHtml(item.specialty || '—')}</td>` : ''}
+        <td><div class="u-flex u-gap-8"><button class="icon-btn" data-medit="${item.id}">${icon('edit')}</button><button class="icon-btn danger" data-mdel="${item.id}" data-name="${escapeHtml(item.name)}">${icon('trash')}</button></div></td></tr>
+      `).join('') : `<tr><td colspan="${isDoctors ? 3 : 2}"><div class="empty-state">${icon('search')}<h4>Nothing here yet</h4></div></td></tr>`}</tbody></table>
+    </div>
+  `;
+  document.getElementById('mm-add').addEventListener('click', () => openMasterFormModal(tab, null));
+  body.querySelectorAll('[data-medit]').forEach(el => el.addEventListener('click', () => openMasterFormModal(tab, el.dataset.medit)));
+  body.querySelectorAll('[data-mdel]').forEach(el => el.addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: `Delete ${escapeHtml(el.dataset.name)}?`, danger: true, confirmLabel: 'Delete', message: 'This master record will be permanently removed. Bookings that already reference it keep their saved values.' });
+    if (!ok) return;
+    try { await deleteMaster(isDoctors ? 'doctors' : 'tests', el.dataset.mdel); toast('Deleted.', 'success'); navigateTo('masters', { tab }); } catch (err) { toast(err.message, 'error'); }
+  }));
+}
+function openMasterFormModal(tab, id) {
+  const isDoctors = tab === 'doctors';
+  const list = isDoctors ? state.doctors : state.tests;
+  const existing = id ? list.find(x => x.id === id) : null;
+  openModal(`
+    <div class="modal-head"><h3>${existing ? 'Edit' : 'Add'} ${isDoctors ? 'Doctor' : 'Test'}</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-body">
+      <div class="field-wrap" style="margin-bottom:14px;"><label>Name <span class="req">*</span></label><input type="text" id="mf-name" value="${escapeHtml(existing ? existing.name : '')}"></div>
+      ${isDoctors ? `<div class="field-wrap"><label>Specialty</label><input type="text" id="mf-specialty" value="${escapeHtml(existing ? existing.specialty || '' : '')}" placeholder="e.g. Cardiology"></div>` : ''}
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="mf-save">Save</button></div>
+  `);
+  document.getElementById('m-x').addEventListener('click', closeModal);
+  document.getElementById('m-cancel').addEventListener('click', closeModal);
+  document.getElementById('mf-save').addEventListener('click', async () => {
+    const name = document.getElementById('mf-name').value.trim();
+    if (!name) { toast('Name is required.', 'error'); return; }
+    const data = isDoctors ? { name, specialty: document.getElementById('mf-specialty').value.trim() } : { name };
+    const btn = document.getElementById('mf-save');
+    setBtnLoading(btn, true, 'Saving…');
+    try {
+      if (existing) await updateMaster(isDoctors ? 'doctors' : 'tests', existing.id, data);
+      else await addMaster(isDoctors ? 'doctors' : 'tests', data);
+      closeModal(); toast('Saved.', 'success'); navigateTo('masters', { tab });
+    } catch (err) { setBtnLoading(btn, false); toast(err.message, 'error'); }
+  });
+}
+
+/* ============================================================
+   RECYCLE BIN — generic for users and each booking register
+   ============================================================ */
+async function renderRecycleBinView(content, kind) {
+  if (state.isAgent) {
+    content.innerHTML = `<div class="empty-state">${icon('lock')}<h4>Admin access required</h4><p>The recycle bin is only available to branch admins and super admins.</p></div>`;
+    return;
+  }
+  const isUsers = kind === 'users';
+  const backView = isUsers ? 'users' : kind;
+  content.innerHTML = `<div class="u-center" style="padding:60px 0;"><span class="loader-ring"></span></div>`;
+  let rows = [];
+  if (isUsers) rows = await fetchDeletedBranchUsers(state.branchId);
+  else rows = await fetchDeletedRegisterRows(kind, addDaysISO(todayISO(), -90), addDaysISO(todayISO(), 1));
+  content.innerHTML = `
+    <div class="u-flex u-gap-12" style="margin-bottom:16px;align-items:center;">
+      <button class="btn btn-ghost btn-sm" id="rb-back">${icon('arrowLeft')}Back</button>
+      <span class="u-muted" style="font-size:13px;">${rows.length} deleted ${isUsers ? 'account(s)' : 'booking(s) in the last 90 days'}</span>
+    </div>
+    ${rows.length ? `<div class="table-wrap"><table><thead><tr>
+      ${isUsers ? '<th>Name</th><th>Email</th><th>Role</th>' : '<th>ID</th><th>Patient</th><th>Date</th>'}
+      <th>Deleted By</th><th>Deleted On</th><th></th>
+    </tr></thead><tbody>${rows.map(r => recycleRowHtml(r, kind, isUsers)).join('')}</tbody></table></div>`
+      : `<div class="empty-state">${icon('restore')}<h4>Recycle bin is empty</h4><p>Deleted ${isUsers ? 'staff accounts' : 'bookings'} will show up here.</p></div>`}
+  `;
+  document.getElementById('rb-back').addEventListener('click', () => navigateTo(backView));
+  content.querySelectorAll('[data-restore]').forEach(el => el.addEventListener('click', async () => {
+    try {
+      if (isUsers) await restoreUser(el.dataset.restore); else await restoreBooking(kind, el.dataset.restore);
+      toast('Restored.', 'success'); navigateTo('recycle-bin', { kind });
+    } catch (err) { toast(err.message, 'error'); }
+  }));
+  content.querySelectorAll('[data-purge]').forEach(el => el.addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: 'Delete permanently?', danger: true, confirmLabel: 'Delete Forever', message: 'This cannot be undone.' });
+    if (!ok) return;
+    try {
+      if (isUsers) await purgeUserPermanently(el.dataset.purge); else await purgeBookingPermanently(kind, el.dataset.purge);
+      toast('Permanently deleted.', 'success'); navigateTo('recycle-bin', { kind });
+    } catch (err) { toast(err.message, 'error'); }
+  }));
+}
+function recycleRowHtml(r, kind, isUsers) {
+  const idCol = isUsers ? `<td style="font-weight:600;">${escapeHtml(r.name)}</td><td>${escapeHtml(r.email)}</td><td><span class="role-tag ${r.role}">${r.role}</span></td>`
+    : `<td class="id-cell">${escapeHtml(r.bookingId)}</td><td>${escapeHtml(r.patientName)}</td><td>${formatDateHuman(r.appointmentDate)}</td>`;
+  return `<tr>${idCol}<td>${escapeHtml(r.deletedByName || '—')}</td><td>${formatDateTimeHuman(r.deletedAt)}</td>
+    <td><div class="u-flex u-gap-8">
+      <button class="icon-btn" data-restore="${r.id}" title="Restore">${icon('restore')}</button>
+      <button class="icon-btn danger" data-purge="${r.id}" title="Delete permanently">${icon('trash')}</button>
+    </div></td></tr>`;
+}
+
+/* ============================================================
+   BOOKING REGISTER — shared list engine (used by all 4 registers)
+   ============================================================ */
+const PAGE_SIZE = 25;
+function defaultRegisterFilters() { return { dateFrom: todayISO(), dateTo: todayISO(), status: 'All', priority: 'All', search: '' }; }
+function loaderHtml() { return `<div class="u-center" style="padding:60px 0;"><span class="loader-ring"></span></div>`; }
+
+async function renderRegisterListView(content, registerKey) {
+  const reg = REGISTERS[registerKey];
+  if (!state.registerCache[registerKey]) state.registerCache[registerKey] = { filters: defaultRegisterFilters(), page: 1, rawRows: [], allRows: [] };
+  const cache = state.registerCache[registerKey];
+  const f = cache.filters;
+  content.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <div class="search-box">${icon('search')}<input type="text" id="rl-search" placeholder="Booking ID, patient or mobile…" value="${escapeHtml(f.search)}"></div>
+        <div class="pill-filters" id="rl-status-pills">${['All'].concat(STATUS_OPTIONS).map(s => `<button class="pill ${f.status === s ? 'active' : ''}" data-status="${s}">${s}</button>`).join('')}</div>
+        <div class="u-flex u-gap-8" style="margin-left:auto;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="rl-from" value="${f.dateFrom}" style="width:150px;">
+          <span class="u-muted" style="font-size:12px;">to</span>
+          <input type="date" id="rl-to" value="${f.dateTo}" style="width:150px;">
+          <select id="rl-priority" style="width:120px;"><option value="All">Priority</option>${optionsHtml(PRIORITY_OPTIONS, f.priority === 'All' ? '' : f.priority)}</select>
+        </div>
+      </div>
+      <div class="table-toolbar" style="padding-top:0;justify-content:flex-end;">
+        ${!state.isAgent ? `<button class="icon-btn" id="rl-recycle" title="Recycle Bin (Admin/Super Admin)">${icon('trash')}</button>` : ''}
+        <button class="icon-btn" id="rl-export" title="Export to Excel">${icon('download')}</button>
+        <button class="btn btn-primary btn-sm" id="rl-new">${icon('plus')}New Booking</button>
+      </div>
+      <div id="rl-table-slot">${loaderHtml()}</div>
+    </div>
+    <div id="rl-pagination" style="margin-top:14px;"></div>
+  `;
+  wireRegisterListToolbar(registerKey);
+  await loadAndRenderRegisterRows(registerKey);
+}
+function wireRegisterListToolbar(registerKey) {
+  const cache = state.registerCache[registerKey];
+  const f = cache.filters;
+  const searchInput = document.getElementById('rl-search');
+  const fromInput = document.getElementById('rl-from'), toInput = document.getElementById('rl-to');
+  function syncDateDisabled() { const searching = !!searchInput.value.trim(); fromInput.disabled = searching; toInput.disabled = searching; }
+  syncDateDisabled();
+  searchInput.addEventListener('input', debounce(() => { f.search = searchInput.value; syncDateDisabled(); loadAndRenderRegisterRows(registerKey); }, 400));
+  fromInput.addEventListener('change', () => { f.dateFrom = fromInput.value; loadAndRenderRegisterRows(registerKey); });
+  toInput.addEventListener('change', () => { f.dateTo = toInput.value; loadAndRenderRegisterRows(registerKey); });
+  document.getElementById('rl-priority').addEventListener('change', (e) => { f.priority = e.target.value || 'All'; applyClientFiltersAndRender(registerKey); });
+  document.querySelectorAll('#rl-status-pills .pill').forEach(el => el.addEventListener('click', () => {
+    document.querySelectorAll('#rl-status-pills .pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active'); f.status = el.dataset.status;
+    applyClientFiltersAndRender(registerKey);
+  }));
+  const recycleBtn = document.getElementById('rl-recycle');
+  if (recycleBtn) recycleBtn.addEventListener('click', () => navigateTo('recycle-bin', { kind: registerKey }));
+  document.getElementById('rl-new').addEventListener('click', () => navigateTo('register-form', { registerKey, id: null }));
+  document.getElementById('rl-export').addEventListener('click', () => exportRegisterToExcel(registerKey));
+}
+async function loadAndRenderRegisterRows(registerKey) {
+  const cache = state.registerCache[registerKey];
+  const f = cache.filters;
+  const slot = document.getElementById('rl-table-slot');
+  slot.innerHTML = loaderHtml();
+  try {
+    cache.rawRows = await fetchRegisterRows(registerKey, { dateFrom: f.dateFrom, dateTo: f.dateTo, searchTerm: f.search });
+    applyClientFiltersAndRender(registerKey);
+  } catch (err) {
+    console.error(err);
+    slot.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load bookings</h4><p>${escapeHtml(err.message || 'Please try again.')}</p></div>`;
+  }
+}
+function applyClientFiltersAndRender(registerKey) {
+  const cache = state.registerCache[registerKey];
+  const f = cache.filters;
+  let rows = cache.rawRows || [];
+  if (f.status !== 'All') rows = rows.filter(r => r.status === f.status);
+  if (f.priority && f.priority !== 'All') rows = rows.filter(r => (r.priority || 'Normal') === f.priority);
+  cache.allRows = rows;
+  cache.page = 1;
+  renderRegisterTablePage(registerKey);
+}
+function registerCellValue(reg, r, key) {
+  if (key === 'bookingId') return `<span class="id-cell">${escapeHtml(r.bookingId)}</span>`;
+  if (key === 'appointmentDate') return escapeHtml(formatDateHuman(r.appointmentDate));
+  if (key === 'testsSummary') return escapeHtml((r.requestedTests || []).join(', ') || '—');
+  return escapeHtml(r[key] || '—');
+}
+function registerRowHtml(reg, r) {
+  const statusClass = 'st-' + (r.status || 'Booked').toLowerCase();
+  const priClass = 'pr-' + (r.priority || 'Normal').toLowerCase();
+  return `<tr>
+    ${reg.listCols.map(c => `<td>${registerCellValue(reg, r, c.k)}</td>`).join('')}
+    <td><span class="badge ${statusClass}">${escapeHtml(r.status || 'Booked')}</span></td>
+    <td><span class="badge ${priClass}">${escapeHtml(r.priority || 'Normal')}</span></td>
+    <td>${escapeHtml(r.bookedByName || '—')}</td>
+    <td><div class="u-flex u-gap-8">
+      <button class="icon-btn" data-open="${r.id}" title="Open">${icon('edit')}</button>
+      <button class="icon-btn danger" data-quickdel="${r.id}" data-bid="${escapeHtml(r.bookingId)}" title="Delete">${icon('trash')}</button>
+    </div></td>
+  </tr>`;
+}
+function paginationHtml(page, totalPages, totalCount) {
+  return `<div class="u-between" style="flex-wrap:wrap;gap:10px;">
+    <span class="u-muted" style="font-size:12.5px;">${formatInt(totalCount)} result(s) · Page ${page} of ${totalPages}</span>
+    <div class="u-flex u-gap-8"><button class="btn btn-secondary btn-sm" id="pg-prev" ${page <= 1 ? 'disabled' : ''}>${icon('chevronLeft')}Prev</button><button class="btn btn-secondary btn-sm" id="pg-next" ${page >= totalPages ? 'disabled' : ''}>Next${icon('chevronRight')}</button></div>
+  </div>`;
+}
+function renderRegisterTablePage(registerKey) {
+  const reg = REGISTERS[registerKey];
+  const cache = state.registerCache[registerKey];
+  const rows = cache.allRows || [];
+  const slot = document.getElementById('rl-table-slot');
+  if (!rows.length) {
+    slot.innerHTML = `<div class="empty-state">${icon(reg.icon)}<h4>No bookings found</h4><p>Try widening the date range, or clear the search and filters.</p></div>`;
+    document.getElementById('rl-pagination').innerHTML = '';
+    return;
+  }
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  cache.page = Math.min(cache.page, totalPages);
+  const pageRows = rows.slice((cache.page - 1) * PAGE_SIZE, cache.page * PAGE_SIZE);
+  slot.innerHTML = `<table><thead><tr>${reg.listCols.map(c => `<th>${c.h}</th>`).join('')}<th>Status</th><th>Priority</th><th>Booked By</th><th></th></tr></thead><tbody>${pageRows.map(r => registerRowHtml(reg, r)).join('')}</tbody></table>`;
+  document.getElementById('rl-pagination').innerHTML = paginationHtml(cache.page, totalPages, rows.length);
+  slot.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => navigateTo('register-form', { registerKey, id: el.dataset.open })));
+  slot.querySelectorAll('[data-quickdel]').forEach(el => el.addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: 'Delete booking?', danger: true, confirmLabel: 'Move to Recycle Bin', message: `Booking <b>${escapeHtml(el.dataset.bid)}</b> will be moved to the recycle bin.` });
+    if (!ok) return;
+    try { await softDeleteBooking(registerKey, el.dataset.quickdel); toast('Moved to recycle bin.', 'success'); loadAndRenderRegisterRows(registerKey); } catch (err) { toast(err.message, 'error'); }
+  }));
+  const prev = document.getElementById('pg-prev'), next = document.getElementById('pg-next');
+  if (prev) prev.addEventListener('click', () => { cache.page = Math.max(1, cache.page - 1); renderRegisterTablePage(registerKey); });
+  if (next) next.addEventListener('click', () => { cache.page = cache.page + 1; renderRegisterTablePage(registerKey); });
+}
+function exportRegisterToExcel(registerKey) {
+  const reg = REGISTERS[registerKey];
+  const cache = state.registerCache[registerKey];
+  const rows = cache.allRows || [];
+  if (!rows.length) { toast('Nothing to export.', 'error'); return; }
+  const header = reg.listCols.map(c => c.h).concat(['Status', 'Priority', 'Source', 'Remarks', 'Booked By', 'Booked On']);
+  const body = rows.map(r => reg.listCols.map(c => {
+    if (c.k === 'appointmentDate') return formatDateHuman(r.appointmentDate);
+    if (c.k === 'testsSummary') return (r.requestedTests || []).join(', ');
+    return r[c.k] || '';
+  }).concat([r.status || '', r.priority || '', r.source || '', r.remarks || '', r.bookedByName || '', formatDateTimeHuman(r.bookedOn)]));
+  const ws = XLSX.utils.aoa_to_sheet([header].concat(body));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, reg.short.slice(0, 28));
+  XLSX.writeFile(wb, `${reg.short.replace(/\s+/g, '_')}_Bookings_${todayISO()}.xlsx`);
+}
+
+/* ---------- Register-specific extra fields (doctor/tests/treatment/address) ---------- */
+function registerExtraFieldsHtml(reg, existing) {
+  if (reg.key === 'doctor' || reg.key === 'dental') {
+    let html = `<div class="form-grid" style="margin-top:16px;">
+      <div class="field-wrap"><label>Doctor Name <span class="req">*</span></label><div class="search-select" id="rf-doctor"></div></div>
+      <div class="field-wrap"><label>Specialty</label><input type="text" id="rf-specialty" value="${escapeHtml(existing && existing.specialty || '')}"></div>
+    </div>`;
+    if (reg.key === 'dental') html += `<div class="form-grid" style="margin-top:16px;"><div class="field-wrap"><label>Treatment Type <span class="req">*</span></label><select id="rf-treatment">${optionsHtml(state.settings.dentalTreatmentTypes, existing && existing.treatmentType, { blank: '— Select —' })}</select></div></div>`;
+    return html;
+  }
+  if (reg.key === 'test' || reg.key === 'homeCollection') {
+    let html = `<div style="margin-top:18px;"><span class="section-label">Requested Tests <span class="req">*</span></span><div id="rf-tests-rows"></div><button type="button" class="btn btn-secondary btn-sm" id="rf-add-test">${icon('plus')}Add Test</button></div>`;
+    if (reg.key === 'homeCollection') html += `<div class="form-grid" style="margin-top:16px;">
+      <div class="field-wrap span-2"><label>Address <span class="req">*</span></label><textarea id="rf-address">${escapeHtml(existing && existing.address || '')}</textarea></div>
+      <div class="field-wrap"><label>Area / Locality</label><input type="text" id="rf-area" value="${escapeHtml(existing && existing.area || '')}"></div>
+      <div class="field-wrap"><label>PIN Code</label><input type="text" id="rf-pin" value="${escapeHtml(existing && existing.pin || '')}"></div>
+    </div>`;
+    return html;
+  }
+  return '';
+}
+function addTestMultiRow(container, initialName) {
+  const wrap = document.createElement('div');
+  wrap.className = 'multi-row';
+  const ssId = 'ss-tr-' + Math.random().toString(36).slice(2, 9);
+  wrap.innerHTML = `<div class="row-num"></div><div class="search-select" id="${ssId}"></div><button type="button" class="icon-btn danger" data-remove-row>${icon('x')}</button>`;
+  container.appendChild(wrap);
+  wrap._ssController = initSearchSelect(ssId, state.tests.map(t => ({ value: t.name, label: t.name })), initialName || '', null, 'Search test…');
+  wrap.querySelector('[data-remove-row]').addEventListener('click', () => { wrap.remove(); renumberMultiRows(container); });
+  renumberMultiRows(container);
+}
+function renumberMultiRows(container) { container.querySelectorAll('.multi-row').forEach((row, i) => { row.querySelector('.row-num').textContent = i + 1; }); }
+function registerExtraFieldsInit(reg, existing) {
+  if (reg.key === 'doctor' || reg.key === 'dental') {
+    const ctrl = initSearchSelect('rf-doctor', state.doctors.map(d => ({ value: d.name, label: d.name + (d.specialty ? ' — ' + d.specialty : '') })), existing && existing.doctorName || '', (val) => {
+      const d = state.doctors.find(x => x.name === val);
+      const specEl = document.getElementById('rf-specialty');
+      if (d && specEl) specEl.value = d.specialty || '';
+    }, 'Search doctor…');
+    document.getElementById('rf-doctor')._ssController = ctrl;
+  }
+  if (reg.key === 'test' || reg.key === 'homeCollection') {
+    const container = document.getElementById('rf-tests-rows');
+    const initial = (existing && existing.requestedTests) || [];
+    if (initial.length) initial.forEach(name => addTestMultiRow(container, name)); else addTestMultiRow(container, '');
+    document.getElementById('rf-add-test').addEventListener('click', () => addTestMultiRow(container, ''));
+  }
+}
+function registerExtraFieldsCollect(reg) {
+  if (reg.key === 'doctor' || reg.key === 'dental') {
+    const doctorName = document.getElementById('rf-doctor')._ssController.getValue();
+    if (!doctorName) return { error: 'Doctor Name is required.' };
+    const data = { doctorName, specialty: document.getElementById('rf-specialty').value.trim() };
+    if (reg.key === 'dental') {
+      const treatmentType = document.getElementById('rf-treatment').value;
+      if (!treatmentType) return { error: 'Treatment Type is required.' };
+      data.treatmentType = treatmentType;
+    }
+    return { data };
+  }
+  if (reg.key === 'test' || reg.key === 'homeCollection') {
+    const names = [];
+    document.getElementById('rf-tests-rows').querySelectorAll('.multi-row').forEach(row => { const v = row._ssController && row._ssController.getValue(); if (v) names.push(v); });
+    if (!names.length) return { error: 'Add at least one requested test.' };
+    const data = { requestedTests: names };
+    if (reg.key === 'homeCollection') {
+      const address = document.getElementById('rf-address').value.trim();
+      if (!address) return { error: 'Address is required.' };
+      data.address = address;
+      data.area = document.getElementById('rf-area').value.trim();
+      data.pin = document.getElementById('rf-pin').value.trim();
+    }
+    return { data };
+  }
+  return { data: {} };
+}
+
+/* ============================================================
+   BOOKING REGISTER — full-page form (create / edit)
+   ============================================================ */
+/* ---------- Booking history / audit trail modal ---------- */
+const HISTORY_ACTION_META = {
+  created: { label: 'Booking created', icon: 'plus' },
+  updated: { label: 'Details updated', icon: 'edit' },
+  deleted: { label: 'Moved to recycle bin', icon: 'trash' },
+  restored: { label: 'Restored from recycle bin', icon: 'restore' }
+};
+function historyEntryHtml(h) {
+  const meta = HISTORY_ACTION_META[h.action] || { label: h.action, icon: 'info' };
+  return `<div style="display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--line-100);">
+    <div class="form-section-icon" style="flex-shrink:0;">${icon(meta.icon)}</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:600;font-size:13.5px;">${escapeHtml(meta.label)}</div>
+      <div class="u-muted" style="font-size:12px;margin-bottom:${h.changes && h.changes.length ? '8px' : '0'};">${escapeHtml(h.byName || '—')} · ${formatDateTimeHuman(h.at)}</div>
+      ${h.changes && h.changes.length ? `<div style="font-size:12.5px;display:flex;flex-direction:column;gap:3px;">${h.changes.map(c => `<div><b>${escapeHtml(c.label)}</b> — ${escapeHtml(c.from)} <span style="color:var(--slate-400);">→</span> ${escapeHtml(c.to)}</div>`).join('')}</div>` : ''}
+    </div>
+  </div>`;
+}
+async function openBookingHistoryModal(registerKey, bookingDocId, bookingIdLabel) {
+  openModal(`
+    <div class="modal-head"><h3>History · ${escapeHtml(bookingIdLabel)}</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-body" id="bh-body">${loaderHtml()}</div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Close</button></div>
+  `, { wide: true });
+  document.getElementById('m-x').addEventListener('click', closeModal);
+  document.getElementById('m-cancel').addEventListener('click', closeModal);
+  try {
+    const rows = await fetchBookingHistory(registerKey, bookingDocId);
+    document.getElementById('bh-body').innerHTML = rows.length ? rows.map(historyEntryHtml).join('') : `<div class="empty-state">${icon('info')}<h4>No history yet</h4></div>`;
+  } catch (err) {
+    document.getElementById('bh-body').innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load history</h4></div>`;
+  }
+}
+async function renderRegisterFormView(content, registerKey, id) {
+  const reg = REGISTERS[registerKey];
+  let existing = null;
+  if (id) {
+    existing = await getBookingDoc(registerKey, id);
+    if (!existing) { content.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Booking not found</h4></div>`; return; }
+  }
+  const slots = generateTimeSlots(reg.slotKey);
+  content.innerHTML = `
+    <div class="form-page">
+      <button class="btn btn-ghost btn-sm" id="rf-back" style="margin-bottom:16px;">${icon('arrowLeft')}Back to ${escapeHtml(reg.label)}</button>
+      <div class="card card-pad">
+        <div class="u-between" style="margin-bottom:6px;flex-wrap:wrap;gap:10px;">
+          <h3 style="font-family:var(--font-display);font-size:17px;display:flex;align-items:center;"><span class="form-section-icon">${icon(reg.icon)}</span>${existing ? 'Edit Booking' : 'New Booking'}</h3>
+          <div class="u-flex u-gap-8" style="align-items:center;">
+            ${existing ? `<span class="summary-pill">${icon('calendar')}${escapeHtml(existing.bookingId)}</span><button type="button" class="btn btn-ghost btn-sm" id="rf-history-btn">${icon('clock')}History</button>` : ''}
+          </div>
+        </div>
+        <p class="hint" style="margin-bottom:18px;">Fields marked <span class="req">*</span> are required.</p>
+        <div class="form-grid">
+          <div class="field-wrap"><label>Appointment Date <span class="req">*</span></label><input type="date" id="rf-date" value="${existing ? existing.appointmentDate : todayISO()}"></div>
+          <div class="field-wrap"><label>Time Slot <span class="req">*</span></label><div class="search-select" id="rf-timeslot"></div></div>
+          <div class="field-wrap"><label>Patient Name <span class="req">*</span></label><input type="text" id="rf-patient" value="${escapeHtml(existing ? existing.patientName : '')}"></div>
+          <div class="field-wrap"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="rf-mobile" value="${escapeHtml(existing ? existing.mobileNumber : '')}" placeholder="e.g. 01712345678"></div>
+          <div class="field-wrap"><label>Priority</label><select id="rf-priority">${optionsHtml(PRIORITY_OPTIONS, existing ? existing.priority : 'Normal')}</select></div>
+          <div class="field-wrap"><label>Booking Source <span class="req">*</span></label><select id="rf-source">${optionsHtml(state.settings.bookingSources, existing ? existing.source : '', { blank: '— Select —' })}</select></div>
+          ${existing ? `<div class="field-wrap"><label>Status</label><select id="rf-status">${optionsHtml(STATUS_OPTIONS, existing.status)}</select></div>` : ''}
+        </div>
+        <div id="rf-extra-fields">${registerExtraFieldsHtml(reg, existing)}</div>
+        <div class="field-wrap span-2" style="margin-top:16px;"><label>Remarks</label><textarea id="rf-remarks">${escapeHtml(existing ? existing.remarks || '' : '')}</textarea></div>
+        <div class="divider"></div>
+        <div class="u-flex u-gap-8" style="justify-content:flex-end;">
+          <button class="btn btn-secondary" id="rf-cancel">Cancel</button>
+          <button class="btn btn-primary" id="rf-save">${icon('check')}${existing ? 'Save Changes' : 'Create Booking'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  const timeSlotCtrl = initSearchSelect('rf-timeslot', slots.map(s => ({ value: s, label: s })), existing ? existing.timeSlot : '', null, 'Search time…');
+  document.getElementById('rf-timeslot')._ssController = timeSlotCtrl;
+  registerExtraFieldsInit(reg, existing);
+  document.getElementById('rf-back').addEventListener('click', () => navigateTo(registerKey));
+  document.getElementById('rf-cancel').addEventListener('click', () => navigateTo(registerKey));
+  if (existing) document.getElementById('rf-history-btn').addEventListener('click', () => openBookingHistoryModal(registerKey, existing.id, existing.bookingId));
+  document.getElementById('rf-save').addEventListener('click', async () => {
+    const appointmentDate = document.getElementById('rf-date').value;
+    const timeSlot = timeSlotCtrl.getValue();
+    const patientName = document.getElementById('rf-patient').value.trim();
+    const mobileNumber = normalizeMobile(document.getElementById('rf-mobile').value);
+    const priority = document.getElementById('rf-priority').value;
+    const source = document.getElementById('rf-source').value;
+    const remarks = document.getElementById('rf-remarks').value.trim();
+    const status = existing ? document.getElementById('rf-status').value : 'Booked';
+    if (!appointmentDate) { toast('Appointment Date is required.', 'error'); return; }
+    if (!timeSlot) { toast('Time Slot is required.', 'error'); return; }
+    if (!patientName) { toast('Patient Name is required.', 'error'); return; }
+    if (!validateMobile(mobileNumber)) { toast('Enter a valid mobile number.', 'error'); return; }
+    if (!source) { toast('Booking Source is required.', 'error'); return; }
+    const extra = registerExtraFieldsCollect(reg);
+    if (extra.error) { toast(extra.error, 'error'); return; }
+    const payload = Object.assign({ appointmentDate, timeSlot, patientName, mobileNumber, priority, source, status, remarks }, extra.data);
+    const btn = document.getElementById('rf-save');
+    setBtnLoading(btn, true, existing ? 'Saving…' : 'Creating…');
+    try {
+      if (existing) { await updateBooking(registerKey, existing.id, payload, existing); showSaveFlash('Booking Updated'); }
+      else { const created = await createBooking(registerKey, payload); showSaveFlash('Booking Created · ' + created.bookingId); }
+      setTimeout(() => navigateTo(registerKey), 650);
+    } catch (err) { setBtnLoading(btn, false); toast(err.message || 'Save failed.', 'error'); }
+  });
+}
+
+/* ============================================================
+   REPORTS — register-wise Summary & Date-wise Detail
+   ============================================================ */
+let reportChartInstance = null;
+function statusAccent(s) { return { Booked: 'blue', Completed: 'green', Cancelled: 'red', Rescheduled: 'amber' }[s] || 'teal'; }
+function startOfMonthISO() { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-01`; }
+
+async function renderReportsView(content) {
+  const vp = state.viewParams || {};
+  const registerKey = vp.registerKey || 'doctor';
+  const tab = vp.tab || 'summary';
+  const dateFrom = vp.dateFrom || startOfMonthISO();
+  const dateTo = vp.dateTo || todayISO();
+  content.innerHTML = `
+    <div class="pill-filters" style="margin-bottom:14px;">${REGISTER_KEYS.map(k => `<button class="pill ${registerKey === k ? 'active' : ''}" data-rk="${k}">${REGISTERS[k].short}</button>`).join('')}</div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <div class="pill-filters"><button class="pill ${tab === 'summary' ? 'active' : ''}" data-rtab="summary">Summary</button><button class="pill ${tab === 'detail' ? 'active' : ''}" data-rtab="detail">Date-wise Detail</button></div>
+        <div class="u-flex u-gap-8" style="margin-left:auto;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="rp-from" value="${dateFrom}" style="width:150px;">
+          <span class="u-muted" style="font-size:12px;">to</span>
+          <input type="date" id="rp-to" value="${dateTo}" style="width:150px;">
+          <button class="icon-btn" id="rp-export" title="Export to Excel">${icon('download')}</button>
+        </div>
+      </div>
+      <div id="rp-body">${loaderHtml()}</div>
+    </div>
+  `;
+  document.querySelectorAll('[data-rk]').forEach(el => el.addEventListener('click', () => navigateTo('reports', { registerKey: el.dataset.rk, tab, dateFrom, dateTo })));
+  document.querySelectorAll('[data-rtab]').forEach(el => el.addEventListener('click', () => navigateTo('reports', { registerKey, tab: el.dataset.rtab, dateFrom, dateTo })));
+  document.getElementById('rp-from').addEventListener('change', (e) => navigateTo('reports', { registerKey, tab, dateFrom: e.target.value, dateTo }));
+  document.getElementById('rp-to').addEventListener('change', (e) => navigateTo('reports', { registerKey, tab, dateFrom, dateTo: e.target.value }));
+  await loadAndRenderReport(registerKey, tab, dateFrom, dateTo);
+  document.getElementById('rp-export').addEventListener('click', () => exportReportToExcel(registerKey, tab, dateFrom, dateTo));
+}
+
+let reportRowsCache = [];
+async function loadAndRenderReport(registerKey, tab, dateFrom, dateTo) {
+  const body = document.getElementById('rp-body');
+  body.innerHTML = loaderHtml();
+  try {
+    const rows = await fetchRegisterRows(registerKey, { dateFrom, dateTo });
+    reportRowsCache = rows;
+    if (tab === 'summary') renderReportSummary(registerKey, rows);
+    else renderReportDetail(registerKey, rows);
+  } catch (err) {
+    console.error(err);
+    body.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load report</h4><p>${escapeHtml(err.message || '')}</p></div>`;
+  }
+}
+function renderReportSummary(registerKey, rows) {
+  const body = document.getElementById('rp-body');
+  const total = rows.length;
+  const byStatus = {}; STATUS_OPTIONS.forEach(s => byStatus[s] = 0);
+  rows.forEach(r => { const s = r.status || 'Booked'; byStatus[s] = (byStatus[s] || 0) + 1; });
+  const bySource = {};
+  rows.forEach(r => { const s = r.source || '—'; bySource[s] = (bySource[s] || 0) + 1; });
+  if (!total) { body.innerHTML = `<div class="empty-state">${icon('barChart')}<h4>No data in this range</h4><p>Widen the date range to see a summary.</p></div>`; return; }
+  body.innerHTML = `
+    <div class="card-pad">
+      <div class="stat-grid">
+        <div class="stat-card accent-ink"><span class="lbl"><span class="stat-icon-badge badge-ink">${icon('calendar')}</span>Total</span><div class="val">${formatInt(total)}</div></div>
+        ${STATUS_OPTIONS.map(s => `<div class="stat-card accent-${statusAccent(s)}"><span class="lbl"><span class="stat-icon-badge badge-${statusAccent(s)}">${icon('check')}</span>${s}</span><div class="val">${formatInt(byStatus[s])}</div></div>`).join('')}
+      </div>
+      <div class="card card-pad" style="max-width:380px;margin:0 auto 24px;"><canvas id="rp-status-chart" height="230"></canvas></div>
+      <span class="section-label">By Booking Source</span>
+      <div class="table-wrap"><table><thead><tr><th>Source</th><th class="num">Count</th></tr></thead><tbody>
+        ${Object.keys(bySource).sort((a, b) => bySource[b] - bySource[a]).map(s => `<tr><td>${escapeHtml(s)}</td><td class="num">${formatInt(bySource[s])}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>
+  `;
+  const ctx = document.getElementById('rp-status-chart');
+  if (reportChartInstance) { reportChartInstance.destroy(); reportChartInstance = null; }
+  if (ctx && window.Chart) {
+    reportChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: STATUS_OPTIONS,
+        datasets: [{ data: STATUS_OPTIONS.map(s => byStatus[s]), backgroundColor: ['#2E77E0', '#1FAA6D', '#DC2626', '#DE7F1E'], borderWidth: 0 }]
+      },
+      options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 12 }, padding: 14 } } }, cutout: '65%', animation: { animateScale: true, duration: 700 } }
+    });
+  }
+}
+function renderReportDetail(registerKey, rows) {
+  const reg = REGISTERS[registerKey];
+  const body = document.getElementById('rp-body');
+  if (!rows.length) { body.innerHTML = `<div class="empty-state">${icon('search')}<h4>No bookings in this range</h4></div>`; return; }
+  body.innerHTML = `<table><thead><tr>${reg.listCols.map(c => `<th>${c.h}</th>`).join('')}<th>Status</th><th>Priority</th><th>Source</th><th>Booked By</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>${reg.listCols.map(c => `<td>${registerCellValue(reg, r, c.k)}</td>`).join('')}<td><span class="badge st-${(r.status || 'Booked').toLowerCase()}">${escapeHtml(r.status || 'Booked')}</span></td><td><span class="badge pr-${(r.priority || 'Normal').toLowerCase()}">${escapeHtml(r.priority || 'Normal')}</span></td><td>${escapeHtml(r.source || '—')}</td><td>${escapeHtml(r.bookedByName || '—')}</td></tr>`).join('')}</tbody>`;
+}
+function exportReportToExcel(registerKey, tab, dateFrom, dateTo) {
+  if (!reportRowsCache.length) { toast('Nothing to export.', 'error'); return; }
+  const reg = REGISTERS[registerKey];
+  const header = reg.listCols.map(c => c.h).concat(['Status', 'Priority', 'Source', 'Remarks', 'Booked By', 'Booked On']);
+  const body = reportRowsCache.map(r => reg.listCols.map(c => registerCellValueRaw(reg, r, c.k)).concat([r.status || '', r.priority || '', r.source || '', r.remarks || '', r.bookedByName || '', formatDateTimeHuman(r.bookedOn)]));
+  const ws = XLSX.utils.aoa_to_sheet([header].concat(body));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, reg.short.slice(0, 28));
+  XLSX.writeFile(wb, `${reg.short.replace(/\s+/g, '_')}_Report_${dateFrom}_to_${dateTo}.xlsx`);
+}
+function registerCellValueRaw(reg, r, key) {
+  if (key === 'appointmentDate') return formatDateHuman(r.appointmentDate);
+  if (key === 'testsSummary') return (r.requestedTests || []).join(', ');
+  return r[key] || '';
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+let dashRegisterChart = null, dashStatusChart = null;
+function tsToMillis(ts) {
+  if (!ts) return 0;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (typeof ts.toDate === 'function') return ts.toDate().getTime();
+  const d = new Date(ts); return isNaN(d) ? 0 : d.getTime();
+}
+function registersVisibleToCurrentUser() {
+  if (state.isAgent) return REGISTER_KEYS.filter(k => state.user.permissions && state.user.permissions[k]);
+  return REGISTER_KEYS;
+}
+async function getDashboardData() {
+  const registersToShow = registersVisibleToCurrentUser();
+  const today = todayISO();
+  const weekEnd = addDaysISO(today, 6);
+  const perRegister = {};
+  await Promise.all(registersToShow.map(async (k) => { perRegister[k] = await fetchRegisterRows(k, { dateFrom: today, dateTo: weekEnd }); }));
+  return { registersToShow, perRegister, today };
+}
+function registerTileHtml(k) {
+  const reg = REGISTERS[k];
+  return `<button class="register-tile" data-quickadd="${k}" style="border:1px solid var(--line-200);">
+    <div class="ico" style="background:linear-gradient(135deg,var(--${reg.accent}-500),var(--${reg.accent}-600));">${icon(reg.icon)}</div>
+    <div class="txt"><div class="t">${escapeHtml(reg.label)}</div><div class="s">New booking</div></div>
+  </button>`;
+}
+function recentRowHtml(r) {
+  const reg = REGISTERS[r._reg];
+  return `<tr style="cursor:pointer;" data-goto="${r._reg}|${r.id}">
+    <td><span class="form-section-icon" style="background:var(--${reg.accent}-100);color:var(--${reg.accent}-600);margin-right:8px;">${icon(reg.icon)}</span>${escapeHtml(reg.short)}</td>
+    <td style="font-weight:600;">${escapeHtml(r.patientName)}</td>
+    <td class="id-cell">${escapeHtml(r.bookingId)}</td>
+    <td>${escapeHtml(r.timeSlot || '—')}</td>
+    <td><span class="badge st-${(r.status || 'Booked').toLowerCase()}">${escapeHtml(r.status || 'Booked')}</span></td>
+  </tr>`;
+}
+async function renderDashboardView(content) {
+  content.innerHTML = loaderHtml();
+  let data;
+  try { data = await getDashboardData(); } catch (err) { content.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load dashboard</h4></div>`; return; }
+  const { registersToShow, perRegister, today } = data;
+  const todayRows = {}; let todayTotal = 0, weekTotal = 0;
+  const statusToday = {}; STATUS_OPTIONS.forEach(s => statusToday[s] = 0);
+  registersToShow.forEach(k => {
+    todayRows[k] = perRegister[k].filter(r => r.appointmentDate === today);
+    todayTotal += todayRows[k].length;
+    weekTotal += perRegister[k].length;
+    todayRows[k].forEach(r => { const s = r.status || 'Booked'; statusToday[s] = (statusToday[s] || 0) + 1; });
+  });
+  let recent = [];
+  registersToShow.forEach(k => todayRows[k].forEach(r => recent.push(Object.assign({ _reg: k }, r))));
+  recent.sort((a, b) => tsToMillis(b.bookedOn) - tsToMillis(a.bookedOn));
+  recent = recent.slice(0, 8);
+
+  content.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-card accent-ink"><span class="lbl"><span class="stat-icon-badge badge-ink">${icon('calendar')}</span>Today's Bookings</span><div class="val" id="dk-today">0</div></div>
+      <div class="stat-card accent-teal"><span class="lbl"><span class="stat-icon-badge badge-teal">${icon('barChart')}</span>Next 7 Days</span><div class="val" id="dk-week">0</div></div>
+      <div class="stat-card accent-green"><span class="lbl"><span class="stat-icon-badge badge-green">${icon('check')}</span>Completed Today</span><div class="val c-green" id="dk-completed">0</div></div>
+      <div class="stat-card accent-red"><span class="lbl"><span class="stat-icon-badge badge-red">${icon('x')}</span>Cancelled Today</span><div class="val" id="dk-cancelled">0</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:20px;" id="dk-chart-grid">
+      <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Register</h3><canvas id="dk-register-chart" height="200"></canvas></div>
+      <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Status</h3><canvas id="dk-status-chart" height="200"></canvas></div>
+    </div>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-head"><h3>Recent Activity</h3><span class="u-muted" style="font-size:12px;">Today, most recent first</span></div>
+      <div class="table-wrap" style="border:none;border-radius:0;">
+        ${recent.length ? `<table><thead><tr><th>Register</th><th>Patient</th><th>ID</th><th>Time</th><th>Status</th></tr></thead><tbody>${recent.map(recentRowHtml).join('')}</tbody></table>`
+      : `<div class="empty-state">${icon('calendar')}<h4>No bookings yet today</h4><p>New bookings will appear here as they come in.</p></div>`}
+      </div>
+    </div>
+    <div>
+      <span class="section-label">Quick Add</span>
+      <div class="stat-grid">${registersToShow.map(registerTileHtml).join('')}</div>
+    </div>
+  `;
+  animateCountUp(document.getElementById('dk-today'), todayTotal);
+  animateCountUp(document.getElementById('dk-week'), weekTotal);
+  animateCountUp(document.getElementById('dk-completed'), statusToday.Completed || 0);
+  animateCountUp(document.getElementById('dk-cancelled'), statusToday.Cancelled || 0);
+
+  if (dashRegisterChart) { dashRegisterChart.destroy(); dashRegisterChart = null; }
+  if (dashStatusChart) { dashStatusChart.destroy(); dashStatusChart = null; }
+  const regCtx = document.getElementById('dk-register-chart');
+  if (regCtx && window.Chart) {
+    const accentHex = { teal: '#14948F', blue: '#2E77E0', amber: '#DE7F1E', violet: '#8562C7' };
+    dashRegisterChart = new Chart(regCtx, {
+      type: 'bar',
+      data: { labels: registersToShow.map(k => REGISTERS[k].short), datasets: [{ data: registersToShow.map(k => todayRows[k].length), backgroundColor: registersToShow.map(k => accentHex[REGISTERS[k].accent] || '#14948F'), borderRadius: 8, maxBarThickness: 46 }] },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, animation: { duration: 700 } }
+    });
+  }
+  const stCtx = document.getElementById('dk-status-chart');
+  if (stCtx && window.Chart) {
+    dashStatusChart = new Chart(stCtx, {
+      type: 'doughnut',
+      data: { labels: STATUS_OPTIONS, datasets: [{ data: STATUS_OPTIONS.map(s => statusToday[s]), backgroundColor: ['#2E77E0', '#1FAA6D', '#DC2626', '#DE7F1E'], borderWidth: 0 }] },
+      options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11.5 }, padding: 12 } } }, cutout: '65%', animation: { animateScale: true, duration: 700 } }
+    });
+  }
+  content.querySelectorAll('[data-goto]').forEach(el => el.addEventListener('click', () => { const [rk, id] = el.dataset.goto.split('|'); navigateTo('register-form', { registerKey: rk, id }); }));
+  content.querySelectorAll('[data-quickadd]').forEach(el => el.addEventListener('click', () => navigateTo('register-form', { registerKey: el.dataset.quickadd, id: null })));
+}
+
+/* ============================================================
+   SETTINGS (Admin & Super-Admin-in-branch)
+   ============================================================ */
+function chipHtml(text, dataAttr) {
+  return `<span class="pill active" style="cursor:default;display:inline-flex;align-items:center;gap:7px;">${escapeHtml(text)}<button type="button" data-${dataAttr}="${escapeHtml(text)}" style="background:none;border:none;color:inherit;cursor:pointer;display:flex;padding:0;">${icon('x')}</button></span>`;
+}
+async function saveSettingsField(key, value) {
+  await updateDoc(doc(db, 'branches', state.branchId), { ['settings.' + key]: value });
+  state.settings[key] = value;
+}
+async function changeOwnPassword(curPw, newPw) {
+  const cred = EmailAuthProvider.credential(auth.currentUser.email, curPw);
+  await reauthenticateWithCredential(auth.currentUser, cred);
+  await fbUpdatePassword(auth.currentUser, newPw);
+}
+async function renderSettingsView(content) {
+  const s = state.settings || DEFAULT_SETTINGS;
+  let sources = s.bookingSources.slice();
+  let treatments = s.dentalTreatmentTypes.slice();
+  content.innerHTML = `
+    <div class="card card-pad" style="margin-bottom:18px;max-width:760px;">
+      <span class="section-label">Clinic Hours &amp; Time Slots</span>
+      <p class="hint" style="margin-bottom:12px;">Slot length can differ per register — used to generate the Time Slot picker on the booking form.</p>
+      <div class="form-grid">
+        <div class="field-wrap"><label>Opens At</label><input type="time" id="st-open" value="${escapeHtml(s.clinicStart)}"></div>
+        <div class="field-wrap"><label>Closes At</label><input type="time" id="st-close" value="${escapeHtml(s.clinicEnd)}"></div>
+      </div>
+      <div class="form-grid cols-3" style="margin-top:14px;">
+        ${REGISTER_KEYS.map(k => `<div class="field-wrap"><label>${escapeHtml(REGISTERS[k].short)} Slot (min)</label><input type="number" min="5" step="5" id="st-slot-${k}" value="${s.slotMinutes[k]}"></div>`).join('')}
+      </div>
+      <button class="btn btn-primary btn-sm" id="st-save-hours" style="margin-top:16px;">${icon('check')}Save</button>
+    </div>
+    <div class="card card-pad" style="margin-bottom:18px;max-width:760px;">
+      <span class="section-label">Booking Sources</span>
+      <div id="st-sources-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px;"></div>
+      <div class="u-flex u-gap-8"><input type="text" id="st-new-source" placeholder="Add a source…" style="max-width:220px;"><button class="btn btn-secondary btn-sm" id="st-add-source">${icon('plus')}Add</button></div>
+    </div>
+    <div class="card card-pad" style="margin-bottom:18px;max-width:760px;">
+      <span class="section-label">Dental Treatment Types</span>
+      <div id="st-treat-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px;"></div>
+      <div class="u-flex u-gap-8"><input type="text" id="st-new-treat" placeholder="Add a treatment type…" style="max-width:220px;"><button class="btn btn-secondary btn-sm" id="st-add-treat">${icon('plus')}Add</button></div>
+    </div>
+    <div class="card card-pad" style="max-width:760px;">
+      <span class="section-label">Change Password</span>
+      <div class="form-grid" style="margin-top:10px;">
+        <div class="field-wrap"><label>Current Password</label><input type="password" id="st-cur-pw"></div>
+        <div class="field-wrap"><label>New Password</label><input type="password" id="st-new-pw"></div>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="st-change-pw" style="margin-top:14px;">${icon('lock')}Update Password</button>
+    </div>
+  `;
+  function renderChips() {
+    document.getElementById('st-sources-chips').innerHTML = sources.length ? sources.map(x => chipHtml(x, 'rm-src')).join('') : '<span class="u-muted" style="font-size:12.5px;">None yet</span>';
+    document.getElementById('st-treat-chips').innerHTML = treatments.length ? treatments.map(x => chipHtml(x, 'rm-treat')).join('') : '<span class="u-muted" style="font-size:12.5px;">None yet</span>';
+    document.querySelectorAll('[data-rm-src]').forEach(el => el.addEventListener('click', async () => {
+      sources = sources.filter(x => x !== el.dataset.rmSrc);
+      try { await saveSettingsField('bookingSources', sources); toast('Updated.', 'success'); } catch (err) { toast(err.message, 'error'); }
+      renderChips();
+    }));
+    document.querySelectorAll('[data-rm-treat]').forEach(el => el.addEventListener('click', async () => {
+      treatments = treatments.filter(x => x !== el.dataset.rmTreat);
+      try { await saveSettingsField('dentalTreatmentTypes', treatments); toast('Updated.', 'success'); } catch (err) { toast(err.message, 'error'); }
+      renderChips();
+    }));
+  }
+  renderChips();
+  document.getElementById('st-add-source').addEventListener('click', async () => {
+    const input = document.getElementById('st-new-source'); const val = input.value.trim();
+    if (!val) return;
+    if (sources.includes(val)) { toast('Already exists.', 'error'); return; }
+    sources.push(val); input.value = '';
+    try { await saveSettingsField('bookingSources', sources); toast('Added.', 'success'); } catch (err) { toast(err.message, 'error'); }
+    renderChips();
+  });
+  document.getElementById('st-add-treat').addEventListener('click', async () => {
+    const input = document.getElementById('st-new-treat'); const val = input.value.trim();
+    if (!val) return;
+    if (treatments.includes(val)) { toast('Already exists.', 'error'); return; }
+    treatments.push(val); input.value = '';
+    try { await saveSettingsField('dentalTreatmentTypes', treatments); toast('Added.', 'success'); } catch (err) { toast(err.message, 'error'); }
+    renderChips();
+  });
+  document.getElementById('st-save-hours').addEventListener('click', async () => {
+    const clinicStart = document.getElementById('st-open').value, clinicEnd = document.getElementById('st-close').value;
+    const slotMinutes = {};
+    REGISTER_KEYS.forEach(k => { slotMinutes[k] = toNum(document.getElementById('st-slot-' + k).value) || DEFAULT_SETTINGS.slotMinutes[k]; });
+    const btn = document.getElementById('st-save-hours');
+    setBtnLoading(btn, true, 'Saving…');
+    try {
+      await updateDoc(doc(db, 'branches', state.branchId), { 'settings.clinicStart': clinicStart, 'settings.clinicEnd': clinicEnd, 'settings.slotMinutes': slotMinutes });
+      state.settings.clinicStart = clinicStart; state.settings.clinicEnd = clinicEnd; state.settings.slotMinutes = slotMinutes;
+      toast('Clinic hours updated.', 'success');
+    } catch (err) { toast(err.message, 'error'); } finally { setBtnLoading(btn, false); }
+  });
+  document.getElementById('st-change-pw').addEventListener('click', async () => {
+    const curPw = document.getElementById('st-cur-pw').value, newPw = document.getElementById('st-new-pw').value;
+    if (!curPw || !newPw) { toast('Fill in both fields.', 'error'); return; }
+    if (newPw.length < 6) { toast('New password must be at least 6 characters.', 'error'); return; }
+    const btn = document.getElementById('st-change-pw');
+    setBtnLoading(btn, true, 'Updating…');
+    try { await changeOwnPassword(curPw, newPw); toast('Password updated.', 'success'); document.getElementById('st-cur-pw').value = ''; document.getElementById('st-new-pw').value = ''; }
+    catch (err) { toast(err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' ? 'Current password is incorrect.' : (err.message || 'Failed.'), 'error'); }
+    finally { setBtnLoading(btn, false); }
+  });
+}
+function openMyAccountModal() {
+  openModal(`
+    <div class="modal-head"><h3>My Account</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-body">
+      <div style="margin-bottom:18px;"><div style="font-size:12.5px;color:var(--slate-500);">Signed in as</div><div style="font-weight:600;font-size:14.5px;">${escapeHtml(state.user.name)}</div><div class="u-muted" style="font-size:12.5px;">${escapeHtml(state.user.email)}</div></div>
+      <div class="field-wrap" style="margin-bottom:12px;"><label>Current Password</label><input type="password" id="ma-cur-pw"></div>
+      <div class="field-wrap"><label>New Password</label><input type="password" id="ma-new-pw"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Close</button><button class="btn btn-primary" id="ma-save">${icon('lock')}Update Password</button></div>
+  `);
+  document.getElementById('m-x').addEventListener('click', closeModal);
+  document.getElementById('m-cancel').addEventListener('click', closeModal);
+  document.getElementById('ma-save').addEventListener('click', async () => {
+    const curPw = document.getElementById('ma-cur-pw').value, newPw = document.getElementById('ma-new-pw').value;
+    if (!curPw || !newPw) { toast('Fill in both fields.', 'error'); return; }
+    if (newPw.length < 6) { toast('New password must be at least 6 characters.', 'error'); return; }
+    const btn = document.getElementById('ma-save');
+    setBtnLoading(btn, true, 'Updating…');
+    try { await changeOwnPassword(curPw, newPw); toast('Password updated.', 'success'); closeModal(); }
+    catch (err) { setBtnLoading(btn, false); toast(err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' ? 'Current password is incorrect.' : (err.message || 'Failed.'), 'error'); }
+  });
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function wireUserChipClick() {
+  const chip = document.querySelector('.user-chip');
+  if (chip) { chip.style.cursor = 'pointer'; chip.title = 'My Account · change password'; chip.addEventListener('click', openMyAccountModal); }
+}
+(function init() {
+  if (CONFIG_IS_PLACEHOLDER) { showConfigNeeded(); return; }
+  wireAuthListeners();
+  wireUserChipClick();
+})();
+
+</script>
+</body>
+</html>
