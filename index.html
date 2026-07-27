@@ -232,12 +232,12 @@ a{color:inherit;}
 }
 #sidebar .side-head{padding:22px 20px 16px;}
 #sidebar .brand-logo{transform:scale(0.92);transform-origin:left center;}
-.branch-chip{
+.clinic-chip{
   margin:2px 20px 14px;padding:9px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
   border-radius:10px;font-size:12px;color:var(--teal-400);display:flex;align-items:center;gap:7px;
 }
-.branch-chip svg{width:14px;height:14px;flex-shrink:0;}
-.branch-chip b{color:#fff;font-weight:600;display:block;font-size:12.5px;}
+.clinic-chip svg{width:14px;height:14px;flex-shrink:0;}
+.clinic-chip b{color:#fff;font-weight:600;display:block;font-size:12.5px;}
 nav.side-nav{flex:1;padding:6px 12px;overflow-y:auto;}
 .nav-item{
   display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;margin-bottom:2px;
@@ -599,7 +599,7 @@ tr.total-row{position:sticky;bottom:0;}
         <div><div class="wordmark">CareDesk</div></div>
       </div>
     </div>
-    <div id="branch-chip-slot"></div>
+    <div id="clinic-chip-slot"></div>
     <nav class="side-nav" id="side-nav"></nav>
     <div class="side-foot">
       <div class="user-chip">
@@ -645,7 +645,7 @@ tr.total-row{position:sticky;bottom:0;}
 <script type="module">
 /* ============================================================
    CAREDESK APPLICATION SCRIPT
-   Appointment Booking Register — multi-branch, role-based.
+   Appointment Booking Register — multi-clinic, role-based.
    ============================================================ */
 
 /* ---------- Firebase (v12 modular SDK, same CDN family as reference app) ---------- */
@@ -667,18 +667,26 @@ import {
    Full setup steps are in README.md.
    ============================================================ */
 const firebaseConfig = {
-‎  apiKey: "AIzaSyAkgSMM4LvpQg4h-vTx7qyBelUfIjTBtMY",
-‎  authDomain: "caredesk-65c0c.firebaseapp.com",
-‎  projectId: "caredesk-65c0c",
-‎  storageBucket: "caredesk-65c0c.firebasestorage.app",
-‎  messagingSenderId: "243956010353",
-‎  appId: "1:243956010353:web:fe8dd6ee69641516df3ad0"
-‎};
+  apiKey: "AIzaSyAkgSMM4LvpQg4h-vTx7qyBelUfIjTBtMY",
+  authDomain: "caredesk-65c0c.firebaseapp.com",
+  projectId: "caredesk-65c0c",
+  storageBucket: "caredesk-65c0c.firebasestorage.app",
+  messagingSenderId: "243956010353",
+  appId: "1:243956010353:web:fe8dd6ee69641516df3ad0"
+};
 const CONFIG_IS_PLACEHOLDER = Object.values(firebaseConfig).some(v => String(v).startsWith('YOUR_'));
 
-const app = CONFIG_IS_PLACEHOLDER ? null : initializeApp(firebaseConfig);
-const auth = CONFIG_IS_PLACEHOLDER ? null : getAuth(app);
-const db = CONFIG_IS_PLACEHOLDER ? null : getFirestore(app);
+let app = null, auth = null, db = null, INIT_ERROR = null;
+if (!CONFIG_IS_PLACEHOLDER) {
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } catch (err) {
+    console.error('Firebase initialization failed:', err);
+    INIT_ERROR = err;
+  }
+}
 // Secondary app instance — used only to create new user accounts (agents/admins)
 // without disturbing the currently signed-in session, since createUserWithEmailAndPassword
 // signs in as the newly created user on whichever auth instance it's called on.
@@ -752,7 +760,7 @@ const REGISTER_KEYS = Object.keys(REGISTERS);
 
 const VIEW_TITLES = {
   dashboard: ['Dashboard', ''],
-  'sa-branches': ['Branches', 'Manage every branch from one place'],
+  'sa-clinics': ['Clinics', 'Manage every clinic from one place'],
   doctor: ['Doctor Appointments', ''],
   test: ['Test Bookings', ''],
   homeCollection: ['Home Collection', ''],
@@ -819,11 +827,11 @@ function icon(name, cls) {
    STATE
    ============================================================ */
 const state = {
-  user: null,            // { uid, name, email, role, branchId, permissions }
-  branchId: null,
-  branchName: '',
-  branchActive: true,
-  settings: null,        // merged DEFAULT_SETTINGS + branch overrides
+  user: null,            // { uid, name, email, role, clinicId, permissions }
+  clinicId: null,
+  clinicName: '',
+  clinicActive: true,
+  settings: null,        // merged DEFAULT_SETTINGS + clinic overrides
   doctors: [],
   tests: [],
   isSuperAdmin: false,
@@ -1059,6 +1067,33 @@ function showConfigNeeded() {
     </div>
   `);
 }
+function showInitError(err) {
+  document.getElementById('global-loader').classList.add('hidden');
+  document.body.insertAdjacentHTML('beforeend', `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--paper-50);">
+      <div class="card card-pad" style="max-width:480px;">
+        <div class="brand-logo" style="margin-bottom:16px;">
+          <div class="mark"><svg viewBox="0 0 24 24"><path class="cal-body" d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path class="cal-check" d="M8.5 14.5l2.5 2.5 5-5"/></svg></div>
+          <div><div class="wordmark">CareDesk</div></div>
+        </div>
+        <h3 style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;color:var(--red-600);">Couldn't start Firebase</h3>
+        <p style="font-size:13.5px;color:var(--slate-600);line-height:1.6;margin-bottom:10px;">Double-check every value in <code>firebaseConfig</code> against Project settings → General → Your apps in the Firebase Console — a typo'd <code>apiKey</code> or <code>projectId</code> is the usual cause.</p>
+        <p style="font-size:12px;color:var(--slate-400);font-family:var(--font-mono);word-break:break-all;">${escapeHtml((err && err.message) || String(err))}</p>
+      </div>
+    </div>
+  `);
+}
+function showLoadingTimeoutHelp() {
+  if (document.getElementById('login-screen').classList.contains('hidden') === false) return; // already resolved
+  if (document.getElementById('app-shell').classList.contains('hidden') === false) return; // already resolved
+  const loader = document.getElementById('global-loader');
+  if (!loader || loader.classList.contains('hidden')) return; // already resolved
+  loader.insertAdjacentHTML('beforeend', `
+    <div style="max-width:340px;text-align:center;margin-top:6px;">
+      <p style="font-size:12.5px;color:var(--slate-500);line-height:1.6;">Still loading… if this doesn't finish, this page most likely can't reach Firebase from where it's being viewed (e.g. a sandboxed in-app preview). Download <code>index.html</code> and open it directly in a browser, or host it (Firebase Hosting, Netlify, etc.) — then reload. Check the browser console for the exact error.</p>
+    </div>
+  `);
+}
 function showLoginScreen(errMsg) {
   document.getElementById('global-loader').classList.add('hidden');
   document.getElementById('app-shell').classList.add('hidden');
@@ -1073,29 +1108,29 @@ function showAppShell() {
   document.getElementById('app-shell').classList.remove('hidden');
 }
 
-async function loadBranchContext(branchId) {
-  const branchSnap = await getDoc(doc(db, 'branches', branchId));
-  if (!branchSnap.exists()) throw new Error('Branch not found.');
-  const b = branchSnap.data();
-  state.branchId = branchId;
-  state.branchName = b.name || 'Branch';
-  state.branchActive = b.active !== false;
+async function loadClinicContext(clinicId) {
+  const clinicSnap = await getDoc(doc(db, 'clinics', clinicId));
+  if (!clinicSnap.exists()) throw new Error('Clinic not found.');
+  const b = clinicSnap.data();
+  state.clinicId = clinicId;
+  state.clinicName = b.name || 'Clinic';
+  state.clinicActive = b.active !== false;
   state.settings = Object.assign({}, DEFAULT_SETTINGS, b.settings || {}, {
     slotMinutes: Object.assign({}, DEFAULT_SETTINGS.slotMinutes, (b.settings && b.settings.slotMinutes) || {}),
     bookingSources: (b.settings && b.settings.bookingSources && b.settings.bookingSources.length) ? b.settings.bookingSources : DEFAULT_SETTINGS.bookingSources.slice(),
     dentalTreatmentTypes: (b.settings && b.settings.dentalTreatmentTypes && b.settings.dentalTreatmentTypes.length) ? b.settings.dentalTreatmentTypes : DEFAULT_SETTINGS.dentalTreatmentTypes.slice()
   });
   const [docSnap, testSnap] = await Promise.all([
-    getDocs(collection(db, 'branches', branchId, 'doctors')),
-    getDocs(collection(db, 'branches', branchId, 'tests'))
+    getDocs(collection(db, 'clinics', clinicId, 'doctors')),
+    getDocs(collection(db, 'clinics', clinicId, 'tests'))
   ]);
   state.doctors = docSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b2) => (a.name || '').localeCompare(b2.name || ''));
   state.tests = testSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b2) => (a.name || '').localeCompare(b2.name || ''));
 }
-function exitBranch() {
-  state.branchId = null; state.branchName = ''; state.doctors = []; state.tests = []; state.settings = null;
+function exitClinic() {
+  state.clinicId = null; state.clinicName = ''; state.doctors = []; state.tests = []; state.settings = null;
   renderShellChrome();
-  navigateTo('sa-branches');
+  navigateTo('sa-clinics');
 }
 
 async function loadUserProfileAndBegin(fbUser) {
@@ -1104,20 +1139,20 @@ async function loadUserProfileAndBegin(fbUser) {
     if (!snap.exists()) { await signOut(auth); showLoginScreen('No profile found for this account. Contact your administrator.'); return; }
     const u = snap.data();
     if (u.deleted) { await signOut(auth); showLoginScreen('This account has been removed.'); return; }
-    state.user = { uid: fbUser.uid, email: fbUser.email, name: u.name || fbUser.email, role: u.role, branchId: u.branchId || null, permissions: u.permissions || {} };
+    state.user = { uid: fbUser.uid, email: fbUser.email, name: u.name || fbUser.email, role: u.role, clinicId: u.clinicId || null, permissions: u.permissions || {} };
     state.isSuperAdmin = u.role === ROLES.SUPERADMIN;
     state.isAdmin = u.role === ROLES.ADMIN;
     state.isAgent = u.role === ROLES.AGENT;
 
     if (state.isSuperAdmin) {
-      // Super admin starts at the branches list; branch context is loaded only after they enter one.
+      // Super admin starts at the clinics list; clinic context is loaded only after they enter one.
       showAppShell();
       renderShellChrome();
-      navigateTo('sa-branches');
+      navigateTo('sa-clinics');
     } else {
-      if (!u.branchId) { await signOut(auth); showLoginScreen('Your account is not linked to a branch. Contact your administrator.'); return; }
-      await loadBranchContext(u.branchId);
-      if (!state.branchActive) { await signOut(auth); showLoginScreen('Your branch has been deactivated. Contact your administrator.'); return; }
+      if (!u.clinicId) { await signOut(auth); showLoginScreen('Your account is not linked to a clinic. Contact your administrator.'); return; }
+      await loadClinicContext(u.clinicId);
+      if (!state.clinicActive) { await signOut(auth); showLoginScreen('Your clinic has been deactivated. Contact your administrator.'); return; }
       showAppShell();
       renderShellChrome();
       navigateTo('dashboard');
@@ -1151,7 +1186,7 @@ function wireAuthListeners() {
   });
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await signOut(auth);
-    state.user = null; state.branchId = null; state.branchName = ''; state.registerCache = {};
+    state.user = null; state.clinicId = null; state.clinicName = ''; state.registerCache = {};
   });
   document.getElementById('menu-toggle').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('open');
@@ -1167,7 +1202,7 @@ function wireAuthListeners() {
    NAVIGATION / SHELL CHROME
    ============================================================ */
 const NAV_ITEMS_SUPERADMIN_TOP = [
-  { view: 'sa-branches', label: 'Branches', icon: 'building2' }
+  { view: 'sa-clinics', label: 'Clinics', icon: 'building2' }
 ];
 const NAV_ITEMS_ADMIN = [
   { view: 'dashboard', label: 'Dashboard', icon: 'grid' },
@@ -1187,7 +1222,7 @@ function navItemsForAgent() {
   return items;
 }
 function currentNavItems() {
-  if (state.isSuperAdmin && !state.branchId) return NAV_ITEMS_SUPERADMIN_TOP;
+  if (state.isSuperAdmin && !state.clinicId) return NAV_ITEMS_SUPERADMIN_TOP;
   if (state.isAgent) return navItemsForAgent();
   return NAV_ITEMS_ADMIN;
 }
@@ -1197,19 +1232,19 @@ function renderSideNav() {
   nav.innerHTML = items.map(it => `<div class="nav-item ${state.view === it.view ? 'active' : ''}" data-nav="${it.view}">${icon(it.icon)}<span>${escapeHtml(it.label)}</span></div>`).join('');
   nav.querySelectorAll('.nav-item').forEach(el => el.addEventListener('click', () => navigateTo(el.dataset.nav)));
 }
-function renderBranchChip() {
-  const slot = document.getElementById('branch-chip-slot');
-  if (state.isSuperAdmin && !state.branchId) { slot.innerHTML = ''; return; }
+function renderClinicChip() {
+  const slot = document.getElementById('clinic-chip-slot');
+  if (state.isSuperAdmin && !state.clinicId) { slot.innerHTML = ''; return; }
   slot.innerHTML = `
-    <div class="branch-chip">${icon('building2')}<div><b>${escapeHtml(state.branchName)}</b>${state.isSuperAdmin ? '<span style="opacity:.75;">Super Admin view</span>' : ''}</div></div>
-    ${state.isSuperAdmin ? `<div style="margin:-8px 20px 14px;"><button class="btn btn-ghost btn-sm" id="exit-branch-btn" style="color:var(--teal-400);">${icon('arrowLeft')}All Branches</button></div>` : ''}
+    <div class="clinic-chip">${icon('building2')}<div><b>${escapeHtml(state.clinicName)}</b>${state.isSuperAdmin ? '<span style="opacity:.75;">Super Admin view</span>' : ''}</div></div>
+    ${state.isSuperAdmin ? `<div style="margin:-8px 20px 14px;"><button class="btn btn-ghost btn-sm" id="exit-clinic-btn" style="color:var(--teal-400);">${icon('arrowLeft')}All Clinics</button></div>` : ''}
   `;
-  const exitBtn = document.getElementById('exit-branch-btn');
-  if (exitBtn) exitBtn.addEventListener('click', exitBranch);
+  const exitBtn = document.getElementById('exit-clinic-btn');
+  if (exitBtn) exitBtn.addEventListener('click', exitClinic);
 }
 function renderShellChrome() {
   renderSideNav();
-  renderBranchChip();
+  renderClinicChip();
   document.getElementById('user-avatar').textContent = initialsOf(state.user.name);
   document.getElementById('user-name').textContent = state.user.name;
   document.getElementById('user-role').textContent = state.user.role;
@@ -1227,7 +1262,7 @@ async function renderView(view, params) {
   content.innerHTML = `<div class="u-center" style="padding:90px 0;"><span class="loader-ring"></span></div>`;
   try {
     if (view === 'dashboard') await renderDashboardView(content);
-    else if (view === 'sa-branches') await renderBranchesListView(content);
+    else if (view === 'sa-clinics') await renderClinicsListView(content);
     else if (REGISTERS[view]) await renderRegisterListView(content, view);
     else if (view === 'masters') await renderMastersView(content);
     else if (view === 'users') await renderUserManagementView(content);
@@ -1253,25 +1288,25 @@ function navigateTo(view, params) {
 }
 
 /* ============================================================
-   SUPER ADMIN — BRANCHES
+   SUPER ADMIN — CLINICS
    ============================================================ */
-async function renderBranchesListView(content) {
-  const snap = await getDocs(query(collection(db, 'branches'), orderBy('name')));
-  const branches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+async function renderClinicsListView(content) {
+  const snap = await getDocs(query(collection(db, 'clinics'), orderBy('name')));
+  const clinics = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   content.innerHTML = `
     <div class="u-between" style="margin-bottom:18px;flex-wrap:wrap;gap:12px;">
-      <p class="u-muted" style="font-size:13.5px;max-width:520px;">Each branch has its own doctors, tests, bookings and staff. Enter a branch to manage its registers, or use Manage to configure staff and bulk-delete tools.</p>
-      <button class="btn btn-primary" id="new-branch-btn">${icon('plus')}New Branch</button>
+      <p class="u-muted" style="font-size:13.5px;max-width:520px;">Each clinic has its own doctors, tests, bookings and staff. Enter a clinic to manage its registers, or use Manage to configure staff and bulk-delete tools.</p>
+      <button class="btn btn-primary" id="new-clinic-btn">${icon('plus')}New Clinic</button>
     </div>
-    ${branches.length ? `<div class="stat-grid">${branches.map(b => branchCardHtml(b)).join('')}</div>` : `
-      <div class="empty-state">${icon('building2')}<h4>No branches yet</h4><p>Create your first branch to start taking bookings.</p></div>
+    ${clinics.length ? `<div class="stat-grid">${clinics.map(b => clinicCardHtml(b)).join('')}</div>` : `
+      <div class="empty-state">${icon('building2')}<h4>No clinics yet</h4><p>Create your first clinic to start taking bookings.</p></div>
     `}
   `;
-  document.getElementById('new-branch-btn').addEventListener('click', openCreateBranchModal);
-  content.querySelectorAll('[data-enter]').forEach(el => el.addEventListener('click', () => enterBranch(el.dataset.enter)));
-  content.querySelectorAll('[data-manage]').forEach(el => el.addEventListener('click', () => openManageBranchModal(el.dataset.manage)));
+  document.getElementById('new-clinic-btn').addEventListener('click', openCreateClinicModal);
+  content.querySelectorAll('[data-enter]').forEach(el => el.addEventListener('click', () => enterClinic(el.dataset.enter)));
+  content.querySelectorAll('[data-manage]').forEach(el => el.addEventListener('click', () => openManageClinicModal(el.dataset.manage)));
 }
-function branchCardHtml(b) {
+function clinicCardHtml(b) {
   return `
     <div class="stat-card accent-${b.active === false ? 'amber' : 'teal'}">
       <div class="u-between">
@@ -1285,50 +1320,50 @@ function branchCardHtml(b) {
     </div>
   `;
 }
-async function enterBranch(branchId) {
+async function enterClinic(clinicId) {
   try {
-    await loadBranchContext(branchId);
+    await loadClinicContext(clinicId);
     renderShellChrome();
     navigateTo('dashboard');
-  } catch (err) { toast(err.message || 'Could not open branch.', 'error'); }
+  } catch (err) { toast(err.message || 'Could not open clinic.', 'error'); }
 }
-function openCreateBranchModal() {
+function openCreateClinicModal() {
   openModal(`
-    <div class="modal-head"><h3>New Branch</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-head"><h3>New Clinic</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
     <div class="modal-body">
-      <div class="field-wrap"><label>Branch Name <span class="req">*</span></label><input type="text" id="nb-name" placeholder="e.g. Gulshan Diagnostic Center"></div>
+      <div class="field-wrap"><label>Clinic Name <span class="req">*</span></label><input type="text" id="nb-name" placeholder="e.g. Gulshan Diagnostic Center"></div>
     </div>
-    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="nb-save">Create Branch</button></div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="nb-save">Create Clinic</button></div>
   `);
   document.getElementById('m-x').addEventListener('click', closeModal);
   document.getElementById('m-cancel').addEventListener('click', closeModal);
   document.getElementById('nb-save').addEventListener('click', async () => {
     const name = document.getElementById('nb-name').value.trim();
-    if (!name) { toast('Branch name is required.', 'error'); return; }
+    if (!name) { toast('Clinic name is required.', 'error'); return; }
     const btn = document.getElementById('nb-save');
     setBtnLoading(btn, true, 'Creating…');
     try {
-      await addDoc(collection(db, 'branches'), { name, active: true, createdAt: serverTimestamp(), createdBy: state.user.uid, settings: {} });
-      closeModal(); toast('Branch created.', 'success');
-      navigateTo('sa-branches');
-    } catch (err) { setBtnLoading(btn, false); toast(err.message || 'Could not create branch.', 'error'); }
+      await addDoc(collection(db, 'clinics'), { name, active: true, createdAt: serverTimestamp(), createdBy: state.user.uid, settings: {} });
+      closeModal(); toast('Clinic created.', 'success');
+      navigateTo('sa-clinics');
+    } catch (err) { setBtnLoading(btn, false); toast(err.message || 'Could not create clinic.', 'error'); }
   });
 }
-async function openManageBranchModal(branchId) {
-  const snap = await getDoc(doc(db, 'branches', branchId));
-  if (!snap.exists()) { toast('Branch not found.', 'error'); return; }
-  const b = { id: branchId, ...snap.data() };
-  const adminsSnap = await getDocs(query(collection(db, 'users'), where('branchId', '==', branchId), where('role', '==', ROLES.ADMIN)));
+async function openManageClinicModal(clinicId) {
+  const snap = await getDoc(doc(db, 'clinics', clinicId));
+  if (!snap.exists()) { toast('Clinic not found.', 'error'); return; }
+  const b = { id: clinicId, ...snap.data() };
+  const adminsSnap = await getDocs(query(collection(db, 'users'), where('clinicId', '==', clinicId), where('role', '==', ROLES.ADMIN)));
   const admins = adminsSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => !a.deleted);
   openModal(`
-    <div class="modal-head"><h3>Manage Branch</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-head"><h3>Manage Clinic</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
     <div class="modal-body">
-      <div class="field-wrap" style="margin-bottom:14px;"><label>Branch Name</label><input type="text" id="mb-name" value="${escapeHtml(b.name)}"></div>
-      <div class="checkbox-row" style="margin-bottom:18px;"><input type="checkbox" id="mb-active" ${b.active !== false ? 'checked' : ''}><label for="mb-active">Branch is active (staff can sign in)</label></div>
+      <div class="field-wrap" style="margin-bottom:14px;"><label>Clinic Name</label><input type="text" id="mb-name" value="${escapeHtml(b.name)}"></div>
+      <div class="checkbox-row" style="margin-bottom:18px;"><input type="checkbox" id="mb-active" ${b.active !== false ? 'checked' : ''}><label for="mb-active">Clinic is active (staff can sign in)</label></div>
       <button class="btn btn-secondary btn-sm" id="mb-save-btn" style="margin-bottom:20px;">${icon('check')}Save Changes</button>
       <div class="divider"></div>
-      <span class="section-label">Branch Admins</span>
-      <div id="mb-admins-list">${admins.map(a => branchAdminRowHtml(a)).join('') || '<p class="u-muted" style="font-size:13px;">No admins yet.</p>'}</div>
+      <span class="section-label">Clinic Admins</span>
+      <div id="mb-admins-list">${admins.map(a => clinicAdminRowHtml(a)).join('') || '<p class="u-muted" style="font-size:13px;">No admins yet.</p>'}</div>
       <button class="btn btn-secondary btn-sm" id="mb-add-admin-btn" style="margin-top:8px;">${icon('userPlus')}Add Admin</button>
       <div class="divider"></div>
       <span class="section-label">Bulk Delete — Register-wise (Super Admin only)</span>
@@ -1341,7 +1376,7 @@ async function openManageBranchModal(branchId) {
       <button class="btn btn-danger btn-sm" id="bd-run-btn" style="margin-top:12px;">${icon('trash')}Bulk Delete</button>
       <div class="divider"></div>
       <span class="section-label" style="color:var(--red-600);">Danger Zone</span>
-      <button class="btn btn-danger btn-sm" id="mb-delete-branch-btn">${icon('trash')}Delete This Branch Entirely</button>
+      <button class="btn btn-danger btn-sm" id="mb-delete-clinic-btn">${icon('trash')}Delete This Clinic Entirely</button>
     </div>
     <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Close</button></div>
   `, { wide: true });
@@ -1350,12 +1385,12 @@ async function openManageBranchModal(branchId) {
   document.getElementById('mb-save-btn').addEventListener('click', async () => {
     const name = document.getElementById('mb-name').value.trim();
     const active = document.getElementById('mb-active').checked;
-    if (!name) { toast('Branch name is required.', 'error'); return; }
-    try { await updateDoc(doc(db, 'branches', branchId), { name, active }); toast('Branch updated.', 'success'); navigateTo('sa-branches'); closeModal(); }
+    if (!name) { toast('Clinic name is required.', 'error'); return; }
+    try { await updateDoc(doc(db, 'clinics', clinicId), { name, active }); toast('Clinic updated.', 'success'); navigateTo('sa-clinics'); closeModal(); }
     catch (err) { toast(err.message || 'Update failed.', 'error'); }
   });
-  document.getElementById('mb-add-admin-btn').addEventListener('click', () => openCreateStaffModal(branchId, ROLES.ADMIN));
-  content_wireBranchAdminRowButtons(branchId);
+  document.getElementById('mb-add-admin-btn').addEventListener('click', () => openCreateStaffModal(clinicId, ROLES.ADMIN));
+  content_wireClinicAdminRowButtons(clinicId);
   document.getElementById('bd-run-btn').addEventListener('click', async () => {
     const registerKey = document.getElementById('bd-register').value;
     const from = document.getElementById('bd-from').value, to = document.getElementById('bd-to').value;
@@ -1367,19 +1402,19 @@ async function openManageBranchModal(branchId) {
     // feedback instead.
     toast('Deleting…', 'info');
     try {
-      const n = await bulkDeleteRegisterByDateRange(branchId, registerKey, from, to);
+      const n = await bulkDeleteRegisterByDateRange(clinicId, registerKey, from, to);
       toast(`${n} booking(s) permanently deleted.`, 'success');
     } catch (err) { toast(err.message || 'Bulk delete failed.', 'error'); }
   });
-  document.getElementById('mb-delete-branch-btn').addEventListener('click', async () => {
-    const ok = await confirmDialog({ title: 'Delete branch entirely?', danger: true, confirmLabel: 'Delete Everything', message: `This permanently deletes <b>${escapeHtml(b.name)}</b> — all its bookings, doctors, tests and staff accounts. This cannot be undone.` });
+  document.getElementById('mb-delete-clinic-btn').addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: 'Delete clinic entirely?', danger: true, confirmLabel: 'Delete Everything', message: `This permanently deletes <b>${escapeHtml(b.name)}</b> — all its bookings, doctors, tests and staff accounts. This cannot be undone.` });
     if (!ok) return;
-    toast('Deleting branch…', 'info');
-    try { await deleteBranchCascade(branchId); toast('Branch deleted.', 'success'); navigateTo('sa-branches'); }
+    toast('Deleting clinic…', 'info');
+    try { await deleteClinicCascade(clinicId); toast('Clinic deleted.', 'success'); navigateTo('sa-clinics'); }
     catch (err) { toast(err.message || 'Delete failed.', 'error'); }
   });
 }
-function branchAdminRowHtml(a) {
+function clinicAdminRowHtml(a) {
   return `
     <div class="u-between" style="padding:9px 0;border-bottom:1px solid var(--line-100);">
       <div><div style="font-size:13.5px;font-weight:600;">${escapeHtml(a.name)}</div><div class="u-muted" style="font-size:12px;">${escapeHtml(a.email)}</div></div>
@@ -1390,18 +1425,18 @@ function branchAdminRowHtml(a) {
     </div>
   `;
 }
-function content_wireBranchAdminRowButtons(branchId) {
+function content_wireClinicAdminRowButtons(clinicId) {
   document.querySelectorAll('[data-reset-pw]').forEach(el => el.addEventListener('click', async () => {
     try { await sendPasswordResetEmail(auth, el.dataset.email); toast('Password reset email sent.', 'success'); } catch (err) { toast(err.message, 'error'); }
   }));
   document.querySelectorAll('[data-remove-admin]').forEach(el => el.addEventListener('click', async () => {
     const ok = await confirmDialog({ title: 'Remove admin?', danger: true, confirmLabel: 'Move to Recycle Bin', message: `${escapeHtml(el.dataset.name)} will be moved to the recycle bin and immediately lose access. A super admin can restore them later.` });
     if (!ok) return;
-    try { await softDeleteUser(el.dataset.removeAdmin); toast('Admin moved to recycle bin.', 'success'); openManageBranchModal(branchId); } catch (err) { toast(err.message, 'error'); }
+    try { await softDeleteUser(el.dataset.removeAdmin); toast('Admin moved to recycle bin.', 'success'); openManageClinicModal(clinicId); } catch (err) { toast(err.message, 'error'); }
   }));
 }
-async function bulkDeleteRegisterByDateRange(branchId, registerKey, fromISO, toISO) {
-  const colRef = collection(db, 'branches', branchId, REGISTERS[registerKey].collection);
+async function bulkDeleteRegisterByDateRange(clinicId, registerKey, fromISO, toISO) {
+  const colRef = collection(db, 'clinics', clinicId, REGISTERS[registerKey].collection);
   const snap = await getDocs(query(colRef, where('appointmentDate', '>=', fromISO), where('appointmentDate', '<=', toISO)));
   if (snap.empty) return 0;
   const docs = snap.docs;
@@ -1412,8 +1447,8 @@ async function bulkDeleteRegisterByDateRange(branchId, registerKey, fromISO, toI
   }
   return docs.length;
 }
-async function deleteAllInSubcollection(branchId, subName) {
-  const snap = await getDocs(collection(db, 'branches', branchId, subName));
+async function deleteAllInSubcollection(clinicId, subName) {
+  const snap = await getDocs(collection(db, 'clinics', clinicId, subName));
   const docs = snap.docs;
   for (let i = 0; i < docs.length; i += 450) {
     const batch = writeBatch(db);
@@ -1421,22 +1456,22 @@ async function deleteAllInSubcollection(branchId, subName) {
     await batch.commit();
   }
 }
-async function deleteBranchCascade(branchId) {
+async function deleteClinicCascade(clinicId) {
   const subs = ['doctors', 'tests', 'counters', 'monthlySummaries', 'meta']
     .concat(REGISTER_KEYS.map(k => REGISTERS[k].collection));
-  for (const s of subs) await deleteAllInSubcollection(branchId, s);
-  const usersSnap = await getDocs(query(collection(db, 'users'), where('branchId', '==', branchId)));
+  for (const s of subs) await deleteAllInSubcollection(clinicId, s);
+  const usersSnap = await getDocs(query(collection(db, 'users'), where('clinicId', '==', clinicId)));
   const uDocs = usersSnap.docs;
   for (let i = 0; i < uDocs.length; i += 450) {
     const batch = writeBatch(db);
     uDocs.slice(i, i + 450).forEach(d => batch.delete(d.ref));
     await batch.commit();
   }
-  await deleteDoc(doc(db, 'branches', branchId));
+  await deleteDoc(doc(db, 'clinics', clinicId));
 }
 
 /* ============================================================
-   DATA LAYER — USERS (agents & branch admins)
+   DATA LAYER — USERS (agents & clinic admins)
    ============================================================ */
 function generateTempPassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -1444,13 +1479,13 @@ function generateTempPassword() {
   for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
   return out;
 }
-async function createStaffAccount({ name, email, role, branchId, permissions }) {
+async function createStaffAccount({ name, email, role, clinicId, permissions }) {
   const tempPassword = generateTempPassword();
   const sAuth = getSecondaryAuth();
   const cred = await createUserWithEmailAndPassword(sAuth, email, tempPassword);
   const uid = cred.user.uid;
   await setDoc(doc(db, 'users', uid), {
-    name, email, role, branchId,
+    name, email, role, clinicId,
     permissions: permissions || {},
     deleted: false, createdAt: serverTimestamp(), createdBy: state.user.uid
   });
@@ -1471,13 +1506,13 @@ async function restoreUser(uid) {
 async function purgeUserPermanently(uid) {
   await deleteDoc(doc(db, 'users', uid));
 }
-async function fetchBranchAgents(branchId, includeDeleted) {
-  const snap = await getDocs(query(collection(db, 'users'), where('branchId', '==', branchId)));
+async function fetchClinicAgents(clinicId, includeDeleted) {
+  const snap = await getDocs(query(collection(db, 'users'), where('clinicId', '==', clinicId)));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
     .filter(u => u.role === ROLES.AGENT && (includeDeleted ? true : !u.deleted));
 }
-async function fetchDeletedBranchUsers(branchId) {
-  const snap = await getDocs(query(collection(db, 'users'), where('branchId', '==', branchId)));
+async function fetchDeletedClinicUsers(clinicId) {
+  const snap = await getDocs(query(collection(db, 'users'), where('clinicId', '==', clinicId)));
   return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => u.deleted);
 }
 
@@ -1485,20 +1520,20 @@ async function fetchDeletedBranchUsers(branchId) {
    DATA LAYER — MASTERS (doctors, tests)
    ============================================================ */
 async function addMaster(kind, data) {
-  const ref = await addDoc(collection(db, 'branches', state.branchId, kind), data);
+  const ref = await addDoc(collection(db, 'clinics', state.clinicId, kind), data);
   const list = kind === 'doctors' ? state.doctors : state.tests;
   list.push({ id: ref.id, ...data });
   list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   return ref.id;
 }
 async function updateMaster(kind, id, data) {
-  await updateDoc(doc(db, 'branches', state.branchId, kind, id), data);
+  await updateDoc(doc(db, 'clinics', state.clinicId, kind, id), data);
   const list = kind === 'doctors' ? state.doctors : state.tests;
   const idx = list.findIndex(x => x.id === id);
   if (idx > -1) list[idx] = { id, ...data };
 }
 async function deleteMaster(kind, id) {
-  await deleteDoc(doc(db, 'branches', state.branchId, kind, id));
+  await deleteDoc(doc(db, 'clinics', state.clinicId, kind, id));
   const list = kind === 'doctors' ? state.doctors : state.tests;
   const idx = list.findIndex(x => x.id === id);
   if (idx > -1) list.splice(idx, 1);
@@ -1508,7 +1543,7 @@ async function deleteMaster(kind, id) {
    DATA LAYER — BOOKINGS (generic across the 4 registers)
    ============================================================ */
 async function nextBookingId(registerKey) {
-  const counterRef = doc(db, 'branches', state.branchId, 'counters', registerKey);
+  const counterRef = doc(db, 'clinics', state.clinicId, 'counters', registerKey);
   const seq = await runTransaction(db, async (tx) => {
     const snap = await tx.get(counterRef);
     const next = (snap.exists() ? snap.data().seq : 0) + 1;
@@ -1528,7 +1563,7 @@ async function createBooking(registerKey, data) {
     bookedOn: serverTimestamp(),
     createdAt: serverTimestamp()
   });
-  const ref = await addDoc(collection(db, 'branches', state.branchId, REGISTERS[registerKey].collection), payload);
+  const ref = await addDoc(collection(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection), payload);
   await logBookingHistory(registerKey, ref.id, 'created', null);
   return { id: ref.id, bookingId };
 }
@@ -1539,27 +1574,27 @@ async function updateBooking(registerKey, id, data, oldData) {
     updatedBy: state.user.uid,
     updatedByName: state.user.name
   });
-  await updateDoc(doc(db, 'branches', state.branchId, REGISTERS[registerKey].collection, id), payload);
+  await updateDoc(doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id), payload);
   const changes = diffBookingFields(oldData, data);
   if (changes.length) await logBookingHistory(registerKey, id, 'updated', changes);
 }
 async function softDeleteBooking(registerKey, id) {
-  await updateDoc(doc(db, 'branches', state.branchId, REGISTERS[registerKey].collection, id), {
+  await updateDoc(doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id), {
     deleted: true, deletedAt: serverTimestamp(), deletedBy: state.user.uid, deletedByName: state.user.name
   });
   await logBookingHistory(registerKey, id, 'deleted', null);
 }
 async function restoreBooking(registerKey, id) {
-  await updateDoc(doc(db, 'branches', state.branchId, REGISTERS[registerKey].collection, id), {
+  await updateDoc(doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id), {
     deleted: false, deletedAt: null, deletedBy: null, deletedByName: null
   });
   await logBookingHistory(registerKey, id, 'restored', null);
 }
 async function purgeBookingPermanently(registerKey, id) {
-  await deleteDoc(doc(db, 'branches', state.branchId, REGISTERS[registerKey].collection, id));
+  await deleteDoc(doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id));
 }
 async function getBookingDoc(registerKey, id) {
-  const snap = await getDoc(doc(db, 'branches', state.branchId, REGISTERS[registerKey].collection, id));
+  const snap = await getDoc(doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
@@ -1585,13 +1620,13 @@ function diffBookingFields(oldData, newData) {
 }
 async function logBookingHistory(registerKey, bookingDocId, action, changes) {
   try {
-    await addDoc(collection(db, 'branches', state.branchId, REGISTERS[registerKey].collection, bookingDocId, 'history'), {
+    await addDoc(collection(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, bookingDocId, 'history'), {
       action, changes: changes || null, by: state.user.uid, byName: state.user.name, at: serverTimestamp()
     });
   } catch (err) { console.error('History log failed:', err); }
 }
 async function fetchBookingHistory(registerKey, bookingDocId) {
-  const snap = await getDocs(query(collection(db, 'branches', state.branchId, REGISTERS[registerKey].collection, bookingDocId, 'history'), orderBy('at', 'desc')));
+  const snap = await getDocs(query(collection(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, bookingDocId, 'history'), orderBy('at', 'desc')));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
@@ -1599,7 +1634,7 @@ async function fetchBookingHistory(registerKey, bookingDocId) {
 // exclusive at the query level (both filter on a single field each) so that
 // no Firestore composite indexes are ever required for this app.
 async function fetchRegisterRows(registerKey, { dateFrom, dateTo, searchTerm, includeDeleted }) {
-  const colRef = collection(db, 'branches', state.branchId, REGISTERS[registerKey].collection);
+  const colRef = collection(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection);
   let rows = [];
   const term = (searchTerm || '').trim();
   if (term) {
@@ -1634,7 +1669,7 @@ async function fetchDeletedRegisterRows(registerKey, dateFrom, dateTo) {
 
 
 /* ============================================================
-   USER MANAGEMENT (Agents) — Admin & Super-Admin(in-branch)
+   USER MANAGEMENT (Agents) — Admin & Super-Admin(in-clinic)
    ============================================================ */
 function mapAuthError(err) {
   const code = err && err.code;
@@ -1644,7 +1679,7 @@ function mapAuthError(err) {
   return (err && err.message) || 'Something went wrong.';
 }
 async function renderUserManagementView(content) {
-  const agents = await fetchBranchAgents(state.branchId);
+  const agents = await fetchClinicAgents(state.clinicId);
   content.innerHTML = `
     <div class="u-between" style="margin-bottom:18px;flex-wrap:wrap;gap:12px;">
       <p class="u-muted" style="font-size:13.5px;max-width:480px;">Agents can be granted access to one or more booking registers.</p>
@@ -1658,7 +1693,7 @@ async function renderUserManagementView(content) {
       <tbody>${agents.length ? agents.map(a => agentRowHtml(a)).join('') : `<tr><td colspan="4"><div class="empty-state">${icon('users')}<h4>No agents yet</h4><p>Add your first front-desk agent to start taking bookings.</p></div></td></tr>`}</tbody>
     </table></div>
   `;
-  document.getElementById('um-add-btn').addEventListener('click', () => openCreateStaffModal(state.branchId, ROLES.AGENT));
+  document.getElementById('um-add-btn').addEventListener('click', () => openCreateStaffModal(state.clinicId, ROLES.AGENT));
   document.getElementById('um-recycle-btn').addEventListener('click', () => navigateTo('recycle-bin', { kind: 'users' }));
   wireAgentRowButtons();
 }
@@ -1686,10 +1721,10 @@ function wireAgentRowButtons() {
     try { await softDeleteUser(el.dataset.removeAgent); toast('Agent moved to recycle bin.', 'success'); navigateTo('users'); } catch (err) { toast(mapAuthError(err), 'error'); }
   }));
 }
-function openCreateStaffModal(branchId, role) {
+function openCreateStaffModal(clinicId, role) {
   const isAgent = role === ROLES.AGENT;
   openModal(`
-    <div class="modal-head"><h3>Add ${isAgent ? 'Agent' : 'Branch Admin'}</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-head"><h3>Add ${isAgent ? 'Agent' : 'Clinic Admin'}</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
     <div class="modal-body">
       <div class="form-grid">
         <div class="field-wrap"><label>Full Name <span class="req">*</span></label><input type="text" id="cs-name" placeholder="e.g. Farhana Akter"></div>
@@ -1701,7 +1736,7 @@ function openCreateStaffModal(branchId, role) {
         <div style="display:flex;flex-wrap:wrap;gap:14px;">
           ${REGISTER_KEYS.map(k => `<label class="checkbox-row"><input type="checkbox" class="cs-perm" value="${k}">${escapeHtml(REGISTERS[k].label)}</label>`).join('')}
         </div>
-      ` : `<p class="hint" style="margin-top:10px;">Branch admins get full access to every register, masters, reports and settings in this branch.</p>`}
+      ` : `<p class="hint" style="margin-top:10px;">Clinic admins get full access to every register, masters, reports and settings in this clinic.</p>`}
     </div>
     <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="cs-save">${icon('userPlus')}Create Account</button></div>
   `);
@@ -1717,7 +1752,7 @@ function openCreateStaffModal(branchId, role) {
     const btn = document.getElementById('cs-save');
     setBtnLoading(btn, true, 'Creating…');
     try {
-      const { tempPassword } = await createStaffAccount({ name, email, role, branchId, permissions });
+      const { tempPassword } = await createStaffAccount({ name, email, role, clinicId, permissions });
       closeModal();
       showTempPasswordModal(name, email, tempPassword);
     } catch (err) { setBtnLoading(btn, false); toast(mapAuthError(err), 'error'); }
@@ -1839,14 +1874,14 @@ function openMasterFormModal(tab, id) {
    ============================================================ */
 async function renderRecycleBinView(content, kind) {
   if (state.isAgent) {
-    content.innerHTML = `<div class="empty-state">${icon('lock')}<h4>Admin access required</h4><p>The recycle bin is only available to branch admins and super admins.</p></div>`;
+    content.innerHTML = `<div class="empty-state">${icon('lock')}<h4>Admin access required</h4><p>The recycle bin is only available to clinic admins and super admins.</p></div>`;
     return;
   }
   const isUsers = kind === 'users';
   const backView = isUsers ? 'users' : kind;
   content.innerHTML = `<div class="u-center" style="padding:60px 0;"><span class="loader-ring"></span></div>`;
   let rows = [];
-  if (isUsers) rows = await fetchDeletedBranchUsers(state.branchId);
+  if (isUsers) rows = await fetchDeletedClinicUsers(state.clinicId);
   else rows = await fetchDeletedRegisterRows(kind, addDaysISO(todayISO(), -90), addDaysISO(todayISO(), 1));
   content.innerHTML = `
     <div class="u-flex u-gap-12" style="margin-bottom:16px;align-items:center;">
@@ -2433,13 +2468,13 @@ async function renderDashboardView(content) {
 }
 
 /* ============================================================
-   SETTINGS (Admin & Super-Admin-in-branch)
+   SETTINGS (Admin & Super-Admin-in-clinic)
    ============================================================ */
 function chipHtml(text, dataAttr) {
   return `<span class="pill active" style="cursor:default;display:inline-flex;align-items:center;gap:7px;">${escapeHtml(text)}<button type="button" data-${dataAttr}="${escapeHtml(text)}" style="background:none;border:none;color:inherit;cursor:pointer;display:flex;padding:0;">${icon('x')}</button></span>`;
 }
 async function saveSettingsField(key, value) {
-  await updateDoc(doc(db, 'branches', state.branchId), { ['settings.' + key]: value });
+  await updateDoc(doc(db, 'clinics', state.clinicId), { ['settings.' + key]: value });
   state.settings[key] = value;
 }
 async function changeOwnPassword(curPw, newPw) {
@@ -2521,7 +2556,7 @@ async function renderSettingsView(content) {
     const btn = document.getElementById('st-save-hours');
     setBtnLoading(btn, true, 'Saving…');
     try {
-      await updateDoc(doc(db, 'branches', state.branchId), { 'settings.clinicStart': clinicStart, 'settings.clinicEnd': clinicEnd, 'settings.slotMinutes': slotMinutes });
+      await updateDoc(doc(db, 'clinics', state.clinicId), { 'settings.clinicStart': clinicStart, 'settings.clinicEnd': clinicEnd, 'settings.slotMinutes': slotMinutes });
       state.settings.clinicStart = clinicStart; state.settings.clinicEnd = clinicEnd; state.settings.slotMinutes = slotMinutes;
       toast('Clinic hours updated.', 'success');
     } catch (err) { toast(err.message, 'error'); } finally { setBtnLoading(btn, false); }
@@ -2569,8 +2604,10 @@ function wireUserChipClick() {
 }
 (function init() {
   if (CONFIG_IS_PLACEHOLDER) { showConfigNeeded(); return; }
+  if (INIT_ERROR) { showInitError(INIT_ERROR); return; }
   wireAuthListeners();
   wireUserChipClick();
+  setTimeout(showLoadingTimeoutHelp, 8000);
 })();
 
 </script>
