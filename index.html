@@ -640,8 +640,6 @@ tr.total-row{position:sticky;bottom:0;}
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script type="module">
 /* ============================================================
    CAREDESK APPLICATION SCRIPT
@@ -702,6 +700,30 @@ function getSecondaryAuth() {
 /* ============================================================
    CONSTANTS
    ============================================================ */
+/* ============================================================
+   LAZY-LOADED LIBRARIES
+   XLSX (Excel export) and Chart.js are only needed after sign-in,
+   never for the login screen itself — loading them on demand (instead
+   of as blocking <script> tags) keeps the first paint / login fast.
+   A background prefetch is kicked off after sign-in so they're
+   usually already warm by the time Dashboard/Reports/Export are used.
+   ============================================================ */
+const XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const CHARTJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';
+const LOADED_SCRIPTS = {};
+function loadScriptOnce(src) {
+  if (!LOADED_SCRIPTS[src]) {
+    LOADED_SCRIPTS[src] = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => resolve();
+      s.onerror = () => { delete LOADED_SCRIPTS[src]; reject(new Error('Failed to load a required script. Check your connection and try again.')); };
+      document.head.appendChild(s);
+    });
+  }
+  return LOADED_SCRIPTS[src];
+}
+
 const ROLES = { SUPERADMIN: 'superadmin', ADMIN: 'admin', AGENT: 'agent' };
 
 const STATUS_OPTIONS = ['Booked', 'Completed', 'Cancelled', 'Rescheduled'];
@@ -1101,6 +1123,7 @@ function showLoginScreen(errMsg) {
   login.classList.remove('hidden');
   const errBox = document.getElementById('login-error');
   if (errMsg) { errBox.textContent = errMsg; errBox.style.display = 'block'; } else { errBox.style.display = 'none'; }
+  setBtnLoading(document.getElementById('login-submit-btn'), false);
 }
 function showAppShell() {
   document.getElementById('global-loader').classList.add('hidden');
@@ -1139,10 +1162,21 @@ async function loadUserProfileAndBegin(fbUser) {
     if (!snap.exists()) { await signOut(auth); showLoginScreen('No profile found for this account. Contact your administrator.'); return; }
     const u = snap.data();
     if (u.deleted) { await signOut(auth); showLoginScreen('This account has been removed.'); return; }
-    state.user = { uid: fbUser.uid, email: fbUser.email, name: u.name || fbUser.email, role: u.role, clinicId: u.clinicId || null, permissions: u.permissions || {} };
-    state.isSuperAdmin = u.role === ROLES.SUPERADMIN;
-    state.isAdmin = u.role === ROLES.ADMIN;
-    state.isAgent = u.role === ROLES.AGENT;
+    // Normalize role so a manually-typed Firestore value like "Super Admin" or "Admin "
+    // still matches — the exact lowercase value (superadmin/admin/agent) is still what's
+    // required in firestore.rules, so this is a friendliness net for the app, not a
+    // replacement for fixing the stored value.
+    const normalizedRole = String(u.role || '').trim().toLowerCase().replace(/\s+/g, '');
+    state.user = { uid: fbUser.uid, email: fbUser.email, name: u.name || fbUser.email, role: normalizedRole, clinicId: u.clinicId || null, permissions: u.permissions || {} };
+    state.isSuperAdmin = normalizedRole === ROLES.SUPERADMIN;
+    state.isAdmin = normalizedRole === ROLES.ADMIN;
+    state.isAgent = normalizedRole === ROLES.AGENT;
+
+    if (!state.isSuperAdmin && !state.isAdmin && !state.isAgent) {
+      await signOut(auth);
+      showLoginScreen(`Unrecognized role "${u.role}" on this account. Ask a super admin to set it to exactly superadmin, admin, or agent in Firestore.`);
+      return;
+    }
 
     if (state.isSuperAdmin) {
       // Super admin starts at the clinics list; clinic context is loaded only after they enter one.
@@ -2051,11 +2085,12 @@ function renderRegisterTablePage(registerKey) {
   if (prev) prev.addEventListener('click', () => { cache.page = Math.max(1, cache.page - 1); renderRegisterTablePage(registerKey); });
   if (next) next.addEventListener('click', () => { cache.page = cache.page + 1; renderRegisterTablePage(registerKey); });
 }
-function exportRegisterToExcel(registerKey) {
+async function exportRegisterToExcel(registerKey) {
   const reg = REGISTERS[registerKey];
   const cache = state.registerCache[registerKey];
   const rows = cache.allRows || [];
   if (!rows.length) { toast('Nothing to export.', 'error'); return; }
+  try { await loadScriptOnce(XLSX_CDN); } catch (err) { toast(err.message, 'error'); return; }
   const header = reg.listCols.map(c => c.h).concat(['Status', 'Priority', 'Source', 'Remarks', 'Booked By', 'Booked On']);
   const body = rows.map(r => reg.listCols.map(c => {
     if (c.k === 'appointmentDate') return formatDateHuman(r.appointmentDate);
@@ -2295,14 +2330,14 @@ async function loadAndRenderReport(registerKey, tab, dateFrom, dateTo) {
   try {
     const rows = await fetchRegisterRows(registerKey, { dateFrom, dateTo });
     reportRowsCache = rows;
-    if (tab === 'summary') renderReportSummary(registerKey, rows);
+    if (tab === 'summary') await renderReportSummary(registerKey, rows);
     else renderReportDetail(registerKey, rows);
   } catch (err) {
     console.error(err);
     body.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load report</h4><p>${escapeHtml(err.message || '')}</p></div>`;
   }
 }
-function renderReportSummary(registerKey, rows) {
+async function renderReportSummary(registerKey, rows) {
   const body = document.getElementById('rp-body');
   const total = rows.length;
   const byStatus = {}; STATUS_OPTIONS.forEach(s => byStatus[s] = 0);
@@ -2325,7 +2360,8 @@ function renderReportSummary(registerKey, rows) {
   `;
   const ctx = document.getElementById('rp-status-chart');
   if (reportChartInstance) { reportChartInstance.destroy(); reportChartInstance = null; }
-  if (ctx && window.Chart) {
+  try { await loadScriptOnce(CHARTJS_CDN); } catch (err) { return; }
+  if (ctx && window.Chart && document.body.contains(ctx)) {
     reportChartInstance = new Chart(ctx, {
       type: 'doughnut',
       data: {
@@ -2343,8 +2379,9 @@ function renderReportDetail(registerKey, rows) {
   body.innerHTML = `<table><thead><tr>${reg.listCols.map(c => `<th>${c.h}</th>`).join('')}<th>Status</th><th>Priority</th><th>Source</th><th>Booked By</th></tr></thead>
     <tbody>${rows.map(r => `<tr>${reg.listCols.map(c => `<td>${registerCellValue(reg, r, c.k)}</td>`).join('')}<td><span class="badge st-${(r.status || 'Booked').toLowerCase()}">${escapeHtml(r.status || 'Booked')}</span></td><td><span class="badge pr-${(r.priority || 'Normal').toLowerCase()}">${escapeHtml(r.priority || 'Normal')}</span></td><td>${escapeHtml(r.source || '—')}</td><td>${escapeHtml(r.bookedByName || '—')}</td></tr>`).join('')}</tbody>`;
 }
-function exportReportToExcel(registerKey, tab, dateFrom, dateTo) {
+async function exportReportToExcel(registerKey, tab, dateFrom, dateTo) {
   if (!reportRowsCache.length) { toast('Nothing to export.', 'error'); return; }
+  try { await loadScriptOnce(XLSX_CDN); } catch (err) { toast(err.message, 'error'); return; }
   const reg = REGISTERS[registerKey];
   const header = reg.listCols.map(c => c.h).concat(['Status', 'Priority', 'Source', 'Remarks', 'Booked By', 'Booked On']);
   const body = reportRowsCache.map(r => reg.listCols.map(c => registerCellValueRaw(reg, r, c.k)).concat([r.status || '', r.priority || '', r.source || '', r.remarks || '', r.bookedByName || '', formatDateTimeHuman(r.bookedOn)]));
@@ -2446,6 +2483,8 @@ async function renderDashboardView(content) {
 
   if (dashRegisterChart) { dashRegisterChart.destroy(); dashRegisterChart = null; }
   if (dashStatusChart) { dashStatusChart.destroy(); dashStatusChart = null; }
+  try { await loadScriptOnce(CHARTJS_CDN); } catch (err) { return; }
+  if (!document.body.contains(content)) return; // navigated away while the chart library was loading
   const regCtx = document.getElementById('dk-register-chart');
   if (regCtx && window.Chart) {
     const accentHex = { teal: '#14948F', blue: '#2E77E0', amber: '#DE7F1E', violet: '#8562C7' };
@@ -2608,6 +2647,8 @@ function wireUserChipClick() {
   wireAuthListeners();
   wireUserChipClick();
   setTimeout(showLoadingTimeoutHelp, 8000);
+  loadScriptOnce(CHARTJS_CDN).catch(() => {});
+  loadScriptOnce(XLSX_CDN).catch(() => {});
 })();
 
 </script>
