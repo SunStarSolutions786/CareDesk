@@ -106,11 +106,13 @@ a{color:inherit;}
   display:flex;align-items:center;justify-content:center;
   box-shadow:var(--shadow-sm);flex-shrink:0;
 }
-.brand-logo .mark svg{width:23px;height:23px;overflow:visible;}
-.brand-logo .mark .cal-body{fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:100;stroke-dashoffset:100;animation:draw-cal 0.9s var(--ease) 0.1s forwards;}
-.brand-logo .mark .cal-check{fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:20;stroke-dashoffset:20;animation:draw-check 0.35s var(--ease) 0.85s forwards;}
-@keyframes draw-cal{to{stroke-dashoffset:0;}}
-@keyframes draw-check{to{stroke-dashoffset:0;}}
+.brand-logo .mark svg{width:24px;height:24px;overflow:visible;}
+.brand-logo .mark path{
+  fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:120;stroke-dashoffset:120;
+  animation:draw-pulse 1.6s var(--ease) 0.2s forwards;
+}
+@keyframes draw-pulse{to{stroke-dashoffset:0;}}
 .brand-logo .wordmark{
   font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:0.5px;
   background:linear-gradient(100deg,var(--ink-900) 30%,var(--teal-600) 70%);
@@ -120,7 +122,6 @@ a{color:inherit;}
   background:linear-gradient(100deg,#fff 30%,var(--teal-400) 75%);
   -webkit-background-clip:text;background-clip:text;
 }
-.brand-logo .tagline{font-size:11px;color:var(--slate-400);letter-spacing:0.3px;margin-top:1px;}
 
 /* traveling highlight dot orbiting a soft arc, used on login hero — replaces the old ECG trace
    with motion that reads as "always scheduling / always on". */
@@ -138,19 +139,6 @@ a{color:inherit;}
   85%{stroke-dasharray:6 460;stroke-dashoffset:-460;}
   100%{stroke-dasharray:6 460;stroke-dashoffset:-466;}
 }
-
-/* Compact traveling-trace loading state for buttons — same technique, sized to sit inline. */
-.btn-trace{display:inline-flex;align-items:center;}
-.btn-trace svg{width:44px;height:16px;overflow:visible;}
-.btn-trace path{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-.btn-trace path.ghost{stroke:var(--teal-100);}
-.btn-trace path.run{stroke:var(--teal-700);stroke-dasharray:4 76;stroke-dashoffset:0;animation:btn-trace-run 1.4s linear infinite;}
-@keyframes btn-trace-run{
-  0%{stroke-dashoffset:0;}
-  85%{stroke-dashoffset:-76;}
-  100%{stroke-dashoffset:-80;}
-}
-@media (prefers-reduced-motion: reduce){.btn-trace path.run{animation:none;stroke-dasharray:none;}}
 
 /* ============================================================
    LOGIN
@@ -251,7 +239,6 @@ nav.side-nav{flex:1;padding:6px 12px;overflow-y:auto;}
   content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:3px;height:18px;
   background:var(--teal-400);border-radius:0 3px 3px 0;
 }
-.nav-group-label{font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.32);text-transform:uppercase;letter-spacing:0.6px;padding:14px 12px 6px;}
 #sidebar .side-foot{padding:14px 20px 18px;border-top:1px solid rgba(255,255,255,0.08);}
 .user-chip{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
 .user-avatar{
@@ -302,8 +289,6 @@ nav.side-nav{flex:1;padding:6px 12px;overflow-y:auto;}
 .stat-card.accent-blue{border-top:3px solid var(--blue-500);}
 .stat-card.accent-red{border-top:3px solid var(--red-600);}
 .stat-card .val.c-green{color:var(--green-600);}
-.stat-card .val.c-amber{color:var(--amber-600);}
-.stat-card .val.c-violet{color:var(--violet-600);}
 
 /* ---------- Dashboard stat icon badges (colorful, animated) ---------- */
 .stat-icon-badge{
@@ -334,8 +319,6 @@ nav.side-nav{flex:1;padding:6px 12px;overflow-y:auto;}
 .form-grid.cols-3{grid-template-columns:repeat(3,1fr);}
 .field-wrap{display:flex;flex-direction:column;gap:6px;}
 .hint{font-size:11.5px;color:var(--slate-400);}
-.banner-icon{width:18px;height:18px;flex-shrink:0;}
-.banner-icon svg{width:18px;height:18px;}
 .field-wrap.span-2{grid-column:span 2;}
 .field-wrap label{font-size:12.5px;font-weight:600;color:var(--slate-600);}
 .field-wrap label .req{color:var(--amber-600);}
@@ -395,12 +378,9 @@ tbody tr{transition:background var(--transition);}
 tbody tr:hover{background:var(--paper-50);}
 tbody td.num,thead th.num{text-align:right;font-family:var(--font-mono);}
 td.id-cell{font-family:var(--font-mono);letter-spacing:0.3px;font-weight:600;}
-tr.total-row td{background:var(--amber-100);font-weight:700;border-top:2px solid var(--amber-500);border-bottom:2px solid var(--amber-500);}
-tr.total-row{position:sticky;bottom:0;}
 
 .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:99px;letter-spacing:0.2px;}
 .badge svg{width:11px;height:11px;}
-.badge.neutral{background:var(--line-100);color:var(--slate-500);}
 .badge.active{background:var(--green-100);color:var(--green-600);}
 .badge.inactive{background:var(--red-100);color:var(--red-600);}
 /* Booking-status semantics */
@@ -483,22 +463,7 @@ tr.total-row{position:sticky;bottom:0;}
 .file-drop svg{width:30px;height:30px;color:var(--teal-500);margin:0 auto 8px;}
 .file-drop .fname{font-family:var(--font-mono);font-size:12.5px;color:var(--teal-700);margin-top:6px;}
 
-.month-tile{
-  display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:1px solid var(--line-200);
-  border-radius:var(--radius-md);margin-bottom:10px;transition:all var(--transition);background:var(--paper-0);
-}
-.month-tile:hover{box-shadow:var(--shadow-sm);}
-.month-tile .m-name{font-family:var(--font-display);font-weight:600;font-size:14.5px;}
-.month-tile .m-meta{font-size:11.5px;color:var(--slate-500);margin-top:2px;}
-
-.progress-track{height:8px;border-radius:99px;background:var(--line-100);overflow:hidden;}
-.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green-500),var(--teal-500));transition:width 0.6s var(--ease);}
-
 .loader-ring{width:20px;height:20px;border:2.5px solid var(--line-200);border-top-color:var(--teal-500);border-radius:50%;animation:spin 0.7s linear infinite;}
-
-.chart-legend{display:flex;gap:18px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
-.chart-legend .li{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--slate-600);font-weight:500;}
-.chart-legend .dot{width:9px;height:9px;border-radius:50%;}
 
 .role-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:0.4px;}
 .role-tag.superadmin{background:var(--ink-800);color:var(--teal-400);}
@@ -543,7 +508,7 @@ tr.total-row{position:sticky;bottom:0;}
 <div id="global-loader">
   <div class="brand-logo">
     <div class="mark">
-      <svg viewBox="0 0 24 24"><path class="cal-body" d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path class="cal-check" d="M8.5 14.5l2.5 2.5 5-5"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M2 13 L7 13 L9.5 6 L13 20 L15.5 10 L17.5 13 L22 13"/></svg>
     </div>
     <div><div class="wordmark">CareDesk</div></div>
   </div>
@@ -557,7 +522,7 @@ tr.total-row{position:sticky;bottom:0;}
   <div class="login-hero">
     <div class="brand-logo">
       <div class="mark">
-        <svg viewBox="0 0 24 24"><path class="cal-body" d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path class="cal-check" d="M8.5 14.5l2.5 2.5 5-5"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M2 13 L7 13 L9.5 6 L13 20 L15.5 10 L17.5 13 L22 13"/></svg>
       </div>
       <div><div class="wordmark">CareDesk</div></div>
     </div>
@@ -578,8 +543,8 @@ tr.total-row{position:sticky;bottom:0;}
   <div class="login-foot">
     <div class="brand-trace">
       <svg viewBox="0 0 360 34" preserveAspectRatio="none">
-        <path class="ghost" d="M0 17 Q90 3 180 17 T360 17"/>
-        <path d="M0 17 Q90 3 180 17 T360 17"/>
+        <path class="ghost" d="M0 17 L120 17 L138 5 L162 29 L182 12 L198 17 L360 17"/>
+        <path d="M0 17 L120 17 L138 5 L162 29 L182 12 L198 17 L360 17"/>
       </svg>
     </div>
   </div>
@@ -594,7 +559,7 @@ tr.total-row{position:sticky;bottom:0;}
     <div class="side-head">
       <div class="brand-logo on-dark">
         <div class="mark">
-          <svg viewBox="0 0 24 24"><path class="cal-body" d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path class="cal-check" d="M8.5 14.5l2.5 2.5 5-5"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M2 13 L7 13 L9.5 6 L13 20 L15.5 10 L17.5 13 L22 13"/></svg>
         </div>
         <div><div class="wordmark">CareDesk</div></div>
       </div>
@@ -611,7 +576,7 @@ tr.total-row{position:sticky;bottom:0;}
       </div>
       <button class="btn btn-secondary btn-sm btn-block" id="logout-btn">Sign Out</button>
       <div class="sidebar-trace">
-        <svg viewBox="0 0 200 26" preserveAspectRatio="none"><path d="M0 13 Q50 2 100 13 T200 13"/></svg>
+        <svg viewBox="0 0 300 26" preserveAspectRatio="none"><path d="M0 13 L100 13 L115 4 L135 22 L150 9 L165 13 L300 13"/></svg>
       </div>
     </div>
   </aside>
@@ -655,7 +620,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
-  query, where, orderBy, limit, runTransaction, writeBatch, serverTimestamp
+  query, where, orderBy, limit, runTransaction, writeBatch, serverTimestamp, increment
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
 /* ============================================================
@@ -750,6 +715,17 @@ const REGISTERS = {
       { k: 'bookingId', h: 'ID' }, { k: 'doctorName', h: 'Doctor' }, { k: 'specialty', h: 'Specialty' },
       { k: 'appointmentDate', h: 'Date' }, { k: 'timeSlot', h: 'Time Slot' },
       { k: 'patientName', h: 'Patient' }, { k: 'mobileNumber', h: 'Mobile' }
+    ],
+    importCols: [
+      { h: 'Appointment Date (YYYY-MM-DD)', k: 'appointmentDate', req: true, sample: todayISO() },
+      { h: 'Time Slot', k: 'timeSlot', req: true, sample: '10:00 AM – 10:15 AM' },
+      { h: 'Patient Name', k: 'patientName', req: true, sample: 'Rahim Uddin' },
+      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '01712345678' },
+      { h: 'Doctor Name', k: 'doctorName', req: true, sample: 'Dr. Kabir Hossain' },
+      { h: 'Specialty', k: 'specialty', req: false, sample: 'Cardiology' },
+      { h: 'Priority (Normal/Urgent/VIP)', k: 'priority', req: false, sample: 'Normal' },
+      { h: 'Booking Source', k: 'source', req: true, sample: 'Walk-in' },
+      { h: 'Remarks', k: 'remarks', req: false, sample: '' }
     ]
   },
   test: {
@@ -758,6 +734,16 @@ const REGISTERS = {
     listCols: [
       { k: 'bookingId', h: 'ID' }, { k: 'patientName', h: 'Patient' }, { k: 'mobileNumber', h: 'Mobile' },
       { k: 'appointmentDate', h: 'Date' }, { k: 'timeSlot', h: 'Time Slot' }, { k: 'testsSummary', h: 'Tests' }
+    ],
+    importCols: [
+      { h: 'Appointment Date (YYYY-MM-DD)', k: 'appointmentDate', req: true, sample: todayISO() },
+      { h: 'Time Slot', k: 'timeSlot', req: true, sample: '10:00 AM – 10:15 AM' },
+      { h: 'Patient Name', k: 'patientName', req: true, sample: 'Rahim Uddin' },
+      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '01712345678' },
+      { h: 'Requested Tests (comma-separated)', k: 'requestedTests', req: true, sample: 'CBC, Lipid Profile' },
+      { h: 'Priority (Normal/Urgent/VIP)', k: 'priority', req: false, sample: 'Normal' },
+      { h: 'Booking Source', k: 'source', req: true, sample: 'Phone' },
+      { h: 'Remarks', k: 'remarks', req: false, sample: '' }
     ]
   },
   homeCollection: {
@@ -766,6 +752,19 @@ const REGISTERS = {
     listCols: [
       { k: 'bookingId', h: 'ID' }, { k: 'patientName', h: 'Patient' }, { k: 'mobileNumber', h: 'Mobile' },
       { k: 'appointmentDate', h: 'Date' }, { k: 'timeSlot', h: 'Time Slot' }, { k: 'area', h: 'Area' }
+    ],
+    importCols: [
+      { h: 'Appointment Date (YYYY-MM-DD)', k: 'appointmentDate', req: true, sample: todayISO() },
+      { h: 'Preferred Time Slot', k: 'timeSlot', req: true, sample: '09:00 AM – 09:30 AM' },
+      { h: 'Patient Name', k: 'patientName', req: true, sample: 'Rahim Uddin' },
+      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '01712345678' },
+      { h: 'Requested Tests (comma-separated)', k: 'requestedTests', req: true, sample: 'CBC, Blood Sugar' },
+      { h: 'Address', k: 'address', req: true, sample: 'House 12, Road 5' },
+      { h: 'Area / Locality', k: 'area', req: false, sample: 'Gulshan' },
+      { h: 'PIN Code', k: 'pin', req: false, sample: '1212' },
+      { h: 'Priority (Normal/Urgent/VIP)', k: 'priority', req: false, sample: 'Normal' },
+      { h: 'Booking Source', k: 'source', req: true, sample: 'WhatsApp' },
+      { h: 'Remarks', k: 'remarks', req: false, sample: '' }
     ]
   },
   dental: {
@@ -775,6 +774,17 @@ const REGISTERS = {
       { k: 'bookingId', h: 'ID' }, { k: 'doctorName', h: 'Doctor' }, { k: 'treatmentType', h: 'Treatment' },
       { k: 'appointmentDate', h: 'Date' }, { k: 'timeSlot', h: 'Time Slot' },
       { k: 'patientName', h: 'Patient' }, { k: 'mobileNumber', h: 'Mobile' }
+    ],
+    importCols: [
+      { h: 'Appointment Date (YYYY-MM-DD)', k: 'appointmentDate', req: true, sample: todayISO() },
+      { h: 'Time Slot', k: 'timeSlot', req: true, sample: '11:00 AM – 11:20 AM' },
+      { h: 'Patient Name', k: 'patientName', req: true, sample: 'Rahim Uddin' },
+      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '01712345678' },
+      { h: 'Doctor Name', k: 'doctorName', req: true, sample: 'Dr. Nusrat Jahan' },
+      { h: 'Treatment Type', k: 'treatmentType', req: true, sample: 'Consultation' },
+      { h: 'Priority (Normal/Urgent/VIP)', k: 'priority', req: false, sample: 'Normal' },
+      { h: 'Booking Source', k: 'source', req: true, sample: 'Referral' },
+      { h: 'Remarks', k: 'remarks', req: false, sample: '' }
     ]
   }
 };
@@ -861,7 +871,9 @@ const state = {
   isAgent: false,
   view: 'dashboard',
   viewParams: {},
-  registerCache: {}       // per-register in-memory cache for the currently open list view
+  registerCache: {},      // per-register in-memory cache for the currently open list view
+  agentsCache: null,      // cached agent list for the current clinic - avoids refetching on every User Management visit
+  agentsCacheClinicId: null
 };
 
 /* ============================================================
@@ -1080,7 +1092,7 @@ function showConfigNeeded() {
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--paper-50);">
       <div class="card card-pad" style="max-width:480px;">
         <div class="brand-logo" style="margin-bottom:16px;">
-          <div class="mark"><svg viewBox="0 0 24 24"><path class="cal-body" d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path class="cal-check" d="M8.5 14.5l2.5 2.5 5-5"/></svg></div>
+          <div class="mark"><svg viewBox="0 0 24 24"><path d="M2 13 L7 13 L9.5 6 L13 20 L15.5 10 L17.5 13 L22 13"/></svg></div>
           <div><div class="wordmark">CareDesk</div></div>
         </div>
         <h3 style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;">Firebase config needed</h3>
@@ -1095,7 +1107,7 @@ function showInitError(err) {
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--paper-50);">
       <div class="card card-pad" style="max-width:480px;">
         <div class="brand-logo" style="margin-bottom:16px;">
-          <div class="mark"><svg viewBox="0 0 24 24"><path class="cal-body" d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path class="cal-check" d="M8.5 14.5l2.5 2.5 5-5"/></svg></div>
+          <div class="mark"><svg viewBox="0 0 24 24"><path d="M2 13 L7 13 L9.5 6 L13 20 L15.5 10 L17.5 13 L22 13"/></svg></div>
           <div><div class="wordmark">CareDesk</div></div>
         </div>
         <h3 style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;color:var(--red-600);">Couldn't start Firebase</h3>
@@ -1220,7 +1232,7 @@ function wireAuthListeners() {
   });
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await signOut(auth);
-    state.user = null; state.clinicId = null; state.clinicName = ''; state.registerCache = {};
+    state.user = null; state.clinicId = null; state.clinicName = ''; state.registerCache = {}; state.agentsCache = null; state.agentsCacheClinicId = null;
   });
   document.getElementById('menu-toggle').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('open');
@@ -1299,7 +1311,7 @@ async function renderView(view, params) {
     else if (view === 'sa-clinics') await renderClinicsListView(content);
     else if (REGISTERS[view]) await renderRegisterListView(content, view);
     else if (view === 'masters') await renderMastersView(content);
-    else if (view === 'users') await renderUserManagementView(content);
+    else if (view === 'users') await renderUserManagementView(content, params.forceRefresh);
     else if (view === 'reports') await renderReportsView(content);
     else if (view === 'settings') await renderSettingsView(content);
     else if (view === 'register-form') await renderRegisterFormView(content, params.registerKey, params.id);
@@ -1365,22 +1377,36 @@ function openCreateClinicModal() {
   openModal(`
     <div class="modal-head"><h3>New Clinic</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
     <div class="modal-body">
-      <div class="field-wrap"><label>Clinic Name <span class="req">*</span></label><input type="text" id="nb-name" placeholder="e.g. Gulshan Diagnostic Center"></div>
+      <div class="field-wrap" style="margin-bottom:16px;"><label>Clinic Name <span class="req">*</span></label><input type="text" id="nb-name" placeholder="e.g. Gulshan Diagnostic Center"></div>
+      <div class="divider"></div>
+      <span class="section-label">First admin account (optional — add later if you prefer)</span>
+      <div class="form-grid">
+        <div class="field-wrap"><label>Admin Name</label><input type="text" id="nb-admin-name" placeholder="Full name"></div>
+        <div class="field-wrap"><label>Admin Email</label><input type="email" id="nb-admin-email" placeholder="admin@clinic.com"></div>
+        <div class="field-wrap span-2"><label>Password</label><input type="text" id="nb-admin-pass" placeholder="Min 6 characters"></div>
+      </div>
     </div>
-    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="nb-save">Create Clinic</button></div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="nb-save">${icon('plus')}Create Clinic</button></div>
   `);
   document.getElementById('m-x').addEventListener('click', closeModal);
   document.getElementById('m-cancel').addEventListener('click', closeModal);
   document.getElementById('nb-save').addEventListener('click', async () => {
     const name = document.getElementById('nb-name').value.trim();
+    const aName = document.getElementById('nb-admin-name').value.trim();
+    const aEmail = document.getElementById('nb-admin-email').value.trim();
+    const aPass = document.getElementById('nb-admin-pass').value;
     if (!name) { toast('Clinic name is required.', 'error'); return; }
+    if ((aName || aEmail || aPass) && (!aName || !aEmail || !aPass)) { toast('Fill in all three admin fields, or leave all three blank.', 'error'); return; }
+    if (aEmail && !validateEmail(aEmail)) { toast('Admin email looks invalid.', 'error'); return; }
+    if (aPass && aPass.length < 6) { toast('Password must be at least 6 characters.', 'error'); return; }
     const btn = document.getElementById('nb-save');
     setBtnLoading(btn, true, 'Creating…');
     try {
-      await addDoc(collection(db, 'clinics'), { name, active: true, createdAt: serverTimestamp(), createdBy: state.user.uid, settings: {} });
+      const ref = await addDoc(collection(db, 'clinics'), { name, active: true, createdAt: serverTimestamp(), createdBy: state.user.uid, settings: {} });
+      if (aEmail) await createStaffAccount({ name: aName, email: aEmail, password: aPass, role: ROLES.ADMIN, clinicId: ref.id, permissions: {} });
       closeModal(); toast('Clinic created.', 'success');
       navigateTo('sa-clinics');
-    } catch (err) { setBtnLoading(btn, false); toast(err.message || 'Could not create clinic.', 'error'); }
+    } catch (err) { setBtnLoading(btn, false); toast(mapAuthError(err), 'error'); }
   });
 }
 async function openManageClinicModal(clinicId) {
@@ -1423,7 +1449,7 @@ async function openManageClinicModal(clinicId) {
     try { await updateDoc(doc(db, 'clinics', clinicId), { name, active }); toast('Clinic updated.', 'success'); navigateTo('sa-clinics'); closeModal(); }
     catch (err) { toast(err.message || 'Update failed.', 'error'); }
   });
-  document.getElementById('mb-add-admin-btn').addEventListener('click', () => openCreateStaffModal(clinicId, ROLES.ADMIN));
+  document.getElementById('mb-add-admin-btn').addEventListener('click', () => openCreateStaffModal(clinicId, ROLES.ADMIN, () => openManageClinicModal(clinicId)));
   content_wireClinicAdminRowButtons(clinicId);
   document.getElementById('bd-run-btn').addEventListener('click', async () => {
     const registerKey = document.getElementById('bd-register').value;
@@ -1474,9 +1500,41 @@ async function bulkDeleteRegisterByDateRange(clinicId, registerKey, fromISO, toI
   const snap = await getDocs(query(colRef, where('appointmentDate', '>=', fromISO), where('appointmentDate', '<=', toISO)));
   if (snap.empty) return 0;
   const docs = snap.docs;
+
+  // Tally net summary deltas across every doc being removed (skip ones already soft-deleted —
+  // those were already decremented from the summary when they were sent to the recycle bin).
+  // A batch can only write a given document once, so deltas from many bookings sharing the same
+  // summary doc must be pre-aggregated here rather than staged per-booking like the single-record
+  // CRUD functions do.
+  const dsDelta = {}, monthDelta = {};
+  docs.forEach((d) => {
+    const row = d.data();
+    if (row.deleted) return;
+    const s = row.status || 'Booked';
+    dsDelta[`${registerKey}_total`] = (dsDelta[`${registerKey}_total`] || 0) - 1;
+    dsDelta[`${registerKey}_${s}`] = (dsDelta[`${registerKey}_${s}`] || 0) - 1;
+    if (row.appointmentDate) {
+      const mk = row.appointmentDate.slice(0, 7);
+      if (!monthDelta[mk]) monthDelta[mk] = {};
+      monthDelta[mk].total = (monthDelta[mk].total || 0) - 1;
+      monthDelta[mk][s] = (monthDelta[mk][s] || 0) - 1;
+    }
+  });
+
   for (let i = 0; i < docs.length; i += 450) {
     const batch = writeBatch(db);
     docs.slice(i, i + 450).forEach(d => batch.delete(d.ref));
+    if (i === 0) {
+      const dsPatch = {};
+      Object.keys(dsDelta).forEach(k => { if (dsDelta[k]) dsPatch[k] = increment(dsDelta[k]); });
+      if (Object.keys(dsPatch).length) { dsPatch.updatedAt = serverTimestamp(); batch.set(doc(db, 'clinics', clinicId, 'meta', 'dashboardSummary'), dsPatch, { merge: true }); }
+      Object.keys(monthDelta).forEach((mk) => {
+        const d = monthDelta[mk], patch = { registerKey, monthKey: mk, updatedAt: serverTimestamp() };
+        let has = false;
+        Object.keys(d).forEach(k => { if (d[k]) { patch[k] = increment(d[k]); has = true; } });
+        if (has) batch.set(doc(db, 'clinics', clinicId, 'monthlySummaries', `${registerKey}_${mk}`), patch, { merge: true });
+      });
+    }
     await batch.commit();
   }
   return docs.length;
@@ -1507,16 +1565,9 @@ async function deleteClinicCascade(clinicId) {
 /* ============================================================
    DATA LAYER — USERS (agents & clinic admins)
    ============================================================ */
-function generateTempPassword() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-  let out = '';
-  for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
-}
-async function createStaffAccount({ name, email, role, clinicId, permissions }) {
-  const tempPassword = generateTempPassword();
+async function createStaffAccount({ name, email, password, role, clinicId, permissions }) {
   const sAuth = getSecondaryAuth();
-  const cred = await createUserWithEmailAndPassword(sAuth, email, tempPassword);
+  const cred = await createUserWithEmailAndPassword(sAuth, email, password);
   const uid = cred.user.uid;
   await setDoc(doc(db, 'users', uid), {
     name, email, role, clinicId,
@@ -1524,7 +1575,7 @@ async function createStaffAccount({ name, email, role, clinicId, permissions }) 
     deleted: false, createdAt: serverTimestamp(), createdBy: state.user.uid
   });
   await signOut(sAuth);
-  return { uid, tempPassword };
+  return { uid };
 }
 async function updateStaffAccount(uid, { name, permissions }) {
   const payload = { name };
@@ -1586,6 +1637,36 @@ async function nextBookingId(registerKey) {
   });
   return `${REGISTERS[registerKey].idPrefix}-${String(seq).padStart(6, '0')}`;
 }
+
+/* ---- Precomputed summary accounting (clinics/{id}/meta/dashboardSummary + monthlySummaries/{registerKey_monthKey}) ----
+   Why: reading every booking on every Dashboard/Reports visit is fine at hundreds of rows, expensive
+   at thousands. Instead we keep small running totals that are updated with targeted increment()
+   writes staged into the SAME batch as the booking write itself — one network round trip either
+   way, and the counts can never drift from a partially-applied write. reconcileClinicSummary()
+   below is the full-recompute safety net for the rarer edge cases (e.g. data edited directly in
+   the Firebase console) — cheap to run on demand from Settings, not needed for normal use. */
+function stageBookingSummaryChange(batch, clinicId, registerKey, oldRow, newRow) {
+  const dsPatch = {};
+  function bumpDs(row, mult) { if (!row) return; const s = row.status || 'Booked'; dsPatch[`${registerKey}_total`] = increment(mult); dsPatch[`${registerKey}_${s}`] = increment(mult); }
+  bumpDs(oldRow, -1); bumpDs(newRow, 1);
+  if (Object.keys(dsPatch).length) { dsPatch.updatedAt = serverTimestamp(); batch.set(doc(db, 'clinics', clinicId, 'meta', 'dashboardSummary'), dsPatch, { merge: true }); }
+
+  const monthDeltas = {}; // monthKey -> { total, [status]: n }
+  function touch(row, mult) {
+    if (!row || !row.appointmentDate) return;
+    const mk = row.appointmentDate.slice(0, 7), s = row.status || 'Booked';
+    if (!monthDeltas[mk]) monthDeltas[mk] = {};
+    monthDeltas[mk].total = (monthDeltas[mk].total || 0) + mult;
+    monthDeltas[mk][s] = (monthDeltas[mk][s] || 0) + mult;
+  }
+  touch(oldRow, -1); touch(newRow, 1);
+  Object.keys(monthDeltas).forEach((mk) => {
+    const d = monthDeltas[mk];
+    const patch = { registerKey, monthKey: mk, updatedAt: serverTimestamp() };
+    Object.keys(d).forEach((k) => { if (d[k]) patch[k] = increment(d[k]); });
+    if (Object.keys(patch).length > 3) batch.set(doc(db, 'clinics', clinicId, 'monthlySummaries', `${registerKey}_${mk}`), patch, { merge: true });
+  });
+}
 async function createBooking(registerKey, data) {
   const bookingId = await nextBookingId(registerKey);
   const payload = Object.assign({}, data, {
@@ -1597,7 +1678,11 @@ async function createBooking(registerKey, data) {
     bookedOn: serverTimestamp(),
     createdAt: serverTimestamp()
   });
-  const ref = await addDoc(collection(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection), payload);
+  const ref = doc(collection(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection));
+  const batch = writeBatch(db);
+  batch.set(ref, payload);
+  stageBookingSummaryChange(batch, state.clinicId, registerKey, null, data);
+  await batch.commit();
   await logBookingHistory(registerKey, ref.id, 'created', null);
   return { id: ref.id, bookingId };
 }
@@ -1608,20 +1693,28 @@ async function updateBooking(registerKey, id, data, oldData) {
     updatedBy: state.user.uid,
     updatedByName: state.user.name
   });
-  await updateDoc(doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id), payload);
+  const ref = doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id);
+  const batch = writeBatch(db);
+  batch.update(ref, payload);
+  stageBookingSummaryChange(batch, state.clinicId, registerKey, oldData, data);
+  await batch.commit();
   const changes = diffBookingFields(oldData, data);
   if (changes.length) await logBookingHistory(registerKey, id, 'updated', changes);
 }
-async function softDeleteBooking(registerKey, id) {
-  await updateDoc(doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id), {
-    deleted: true, deletedAt: serverTimestamp(), deletedBy: state.user.uid, deletedByName: state.user.name
-  });
+async function softDeleteBooking(registerKey, id, existingRow) {
+  const ref = doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id);
+  const batch = writeBatch(db);
+  batch.update(ref, { deleted: true, deletedAt: serverTimestamp(), deletedBy: state.user.uid, deletedByName: state.user.name });
+  if (existingRow) stageBookingSummaryChange(batch, state.clinicId, registerKey, existingRow, null);
+  await batch.commit();
   await logBookingHistory(registerKey, id, 'deleted', null);
 }
-async function restoreBooking(registerKey, id) {
-  await updateDoc(doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id), {
-    deleted: false, deletedAt: null, deletedBy: null, deletedByName: null
-  });
+async function restoreBooking(registerKey, id, existingRow) {
+  const ref = doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id);
+  const batch = writeBatch(db);
+  batch.update(ref, { deleted: false, deletedAt: null, deletedBy: null, deletedByName: null });
+  if (existingRow) stageBookingSummaryChange(batch, state.clinicId, registerKey, null, existingRow);
+  await batch.commit();
   await logBookingHistory(registerKey, id, 'restored', null);
 }
 async function purgeBookingPermanently(registerKey, id) {
@@ -1664,6 +1757,60 @@ async function fetchBookingHistory(registerKey, bookingDocId) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+/* ---- Reconciliation: full recompute, for the "Recalculate Summary" button in Settings.
+   Not needed for normal use (every mutation already keeps the summary in sync as it happens) —
+   this is the safety net for drift, e.g. if data was ever edited directly in the Firebase
+   console. Reads every non-deleted booking once and rewrites the summary docs with set()
+   (not increment()) so the result is exactly correct regardless of any prior drift. ---- */
+async function reconcileClinicSummary(clinicId) {
+  const dsPatch = {};
+  const monthTotals = {}; // `${registerKey}_${monthKey}` -> { registerKey, monthKey, counts:{status:n} }
+  for (const registerKey of REGISTER_KEYS) {
+    const snap = await getDocs(collection(db, 'clinics', clinicId, REGISTERS[registerKey].collection));
+    snap.docs.forEach((d) => {
+      const row = d.data();
+      if (row.deleted) return;
+      const s = row.status || 'Booked';
+      dsPatch[`${registerKey}_total`] = (dsPatch[`${registerKey}_total`] || 0) + 1;
+      dsPatch[`${registerKey}_${s}`] = (dsPatch[`${registerKey}_${s}`] || 0) + 1;
+      if (row.appointmentDate) {
+        const mk = row.appointmentDate.slice(0, 7), key = `${registerKey}_${mk}`;
+        if (!monthTotals[key]) monthTotals[key] = { registerKey, monthKey: mk, counts: {} };
+        monthTotals[key].counts.total = (monthTotals[key].counts.total || 0) + 1;
+        monthTotals[key].counts[s] = (monthTotals[key].counts[s] || 0) + 1;
+      }
+    });
+  }
+  dsPatch.updatedAt = serverTimestamp();
+  await setDoc(doc(db, 'clinics', clinicId, 'meta', 'dashboardSummary'), dsPatch); // no merge: replaces stale fields too
+  const monthKeys = Object.keys(monthTotals);
+  for (let i = 0; i < monthKeys.length; i += 1) {
+    const m = monthTotals[monthKeys[i]];
+    await setDoc(doc(db, 'clinics', clinicId, 'monthlySummaries', monthKeys[i]), { registerKey: m.registerKey, monthKey: m.monthKey, updatedAt: serverTimestamp(), ...m.counts });
+  }
+  return { registers: REGISTER_KEYS.length, months: monthKeys.length };
+}
+async function getDashboardSummary(clinicId) {
+  const snap = await getDoc(doc(db, 'clinics', clinicId, 'meta', 'dashboardSummary'));
+  return snap.exists() ? snap.data() : {};
+}
+function monthKeysBetween(fromMonth, toMonth) {
+  const keys = [];
+  let [y, m] = fromMonth.split('-').map(Number);
+  const [ey, em] = toMonth.split('-').map(Number);
+  while (y < ey || (y === ey && m <= em)) {
+    keys.push(`${y}-${pad2(m)}`);
+    m += 1; if (m > 12) { m = 1; y += 1; }
+    if (keys.length > 240) break; // 20 years, safety valve
+  }
+  return keys;
+}
+async function getMonthlySummaries(clinicId, registerKey, fromMonth, toMonth) {
+  const months = monthKeysBetween(fromMonth, toMonth);
+  const snaps = await Promise.all(months.map(mk => getDoc(doc(db, 'clinics', clinicId, 'monthlySummaries', `${registerKey}_${mk}`))));
+  return snaps.filter(s => s.exists()).map(s => s.data());
+}
+
 // Fetch rows for a register's list view. Search and date-range are mutually
 // exclusive at the query level (both filter on a single field each) so that
 // no Firestore composite indexes are ever required for this app.
@@ -1701,7 +1848,6 @@ async function fetchDeletedRegisterRows(registerKey, dateFrom, dateTo) {
   return rows.filter(r => r.deleted);
 }
 
-
 /* ============================================================
    USER MANAGEMENT (Agents) — Admin & Super-Admin(in-clinic)
    ============================================================ */
@@ -1712,8 +1858,12 @@ function mapAuthError(err) {
   if (code === 'auth/weak-password') return 'Password is too weak.';
   return (err && err.message) || 'Something went wrong.';
 }
-async function renderUserManagementView(content) {
-  const agents = await fetchClinicAgents(state.clinicId);
+async function renderUserManagementView(content, forceRefresh) {
+  if (forceRefresh || state.agentsCacheClinicId !== state.clinicId || !state.agentsCache) {
+    state.agentsCache = await fetchClinicAgents(state.clinicId);
+    state.agentsCacheClinicId = state.clinicId;
+  }
+  const agents = state.agentsCache;
   content.innerHTML = `
     <div class="u-between" style="margin-bottom:18px;flex-wrap:wrap;gap:12px;">
       <p class="u-muted" style="font-size:13.5px;max-width:480px;">Agents can be granted access to one or more booking registers.</p>
@@ -1752,10 +1902,10 @@ function wireAgentRowButtons() {
   document.querySelectorAll('[data-remove-agent]').forEach(el => el.addEventListener('click', async () => {
     const ok = await confirmDialog({ title: 'Remove agent?', danger: true, confirmLabel: 'Move to Recycle Bin', message: `${escapeHtml(el.dataset.name)} will be moved to the recycle bin and lose access immediately. You can restore them later.` });
     if (!ok) return;
-    try { await softDeleteUser(el.dataset.removeAgent); toast('Agent moved to recycle bin.', 'success'); navigateTo('users'); } catch (err) { toast(mapAuthError(err), 'error'); }
+    try { await softDeleteUser(el.dataset.removeAgent); toast('Agent moved to recycle bin.', 'success'); navigateTo('users', { forceRefresh: true }); } catch (err) { toast(mapAuthError(err), 'error'); }
   }));
 }
-function openCreateStaffModal(clinicId, role) {
+function openCreateStaffModal(clinicId, role, onSuccess) {
   const isAgent = role === ROLES.AGENT;
   openModal(`
     <div class="modal-head"><h3>Add ${isAgent ? 'Agent' : 'Clinic Admin'}</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
@@ -1763,6 +1913,7 @@ function openCreateStaffModal(clinicId, role) {
       <div class="form-grid">
         <div class="field-wrap"><label>Full Name <span class="req">*</span></label><input type="text" id="cs-name" placeholder="e.g. Farhana Akter"></div>
         <div class="field-wrap"><label>Email <span class="req">*</span></label><input type="email" id="cs-email" placeholder="name@example.com"></div>
+        <div class="field-wrap span-2"><label>Password <span class="req">*</span></label><input type="text" id="cs-pass" placeholder="Min 6 characters"></div>
       </div>
       ${isAgent ? `
         <div class="divider"></div>
@@ -1779,34 +1930,21 @@ function openCreateStaffModal(clinicId, role) {
   document.getElementById('cs-save').addEventListener('click', async () => {
     const name = document.getElementById('cs-name').value.trim();
     const email = document.getElementById('cs-email').value.trim();
+    const password = document.getElementById('cs-pass').value;
     if (!name) { toast('Name is required.', 'error'); return; }
     if (!validateEmail(email)) { toast('Enter a valid email address.', 'error'); return; }
+    if (password.length < 6) { toast('Password must be at least 6 characters.', 'error'); return; }
     const permissions = {};
     if (isAgent) document.querySelectorAll('.cs-perm:checked').forEach(el => { permissions[el.value] = true; });
     const btn = document.getElementById('cs-save');
     setBtnLoading(btn, true, 'Creating…');
     try {
-      const { tempPassword } = await createStaffAccount({ name, email, role, clinicId, permissions });
+      await createStaffAccount({ name, email, password, role, clinicId, permissions });
       closeModal();
-      showTempPasswordModal(name, email, tempPassword);
+      toast(`${isAgent ? 'Agent' : 'Admin'} account created.`, 'success');
+      if (onSuccess) onSuccess(); else if (state.view === 'users') navigateTo('users', { forceRefresh: true });
     } catch (err) { setBtnLoading(btn, false); toast(mapAuthError(err), 'error'); }
   });
-}
-function showTempPasswordModal(name, email, tempPassword) {
-  openModal(`
-    <div class="modal-head"><h3>Account Created</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
-    <div class="modal-body">
-      <p style="font-size:13.5px;color:var(--slate-600);margin-bottom:14px;">Share these sign-in details with <b>${escapeHtml(name)}</b>. They should change the password after first sign-in.</p>
-      <div class="card card-pad" style="background:var(--paper-50);">
-        <div style="font-size:12px;color:var(--slate-500);">Email</div><div style="font-family:var(--font-mono);font-size:14px;margin-bottom:10px;">${escapeHtml(email)}</div>
-        <div style="font-size:12px;color:var(--slate-500);">Temporary Password</div><div style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--teal-700);">${escapeHtml(tempPassword)}</div>
-      </div>
-    </div>
-    <div class="modal-foot"><button class="btn btn-primary" id="tp-done">Done</button></div>
-  `, { persistent: true });
-  const done = () => { closeModal(); if (state.view === 'users') navigateTo('users'); };
-  document.getElementById('m-x').addEventListener('click', done);
-  document.getElementById('tp-done').addEventListener('click', done);
 }
 async function openEditAgentModal(uid) {
   const snap = await getDoc(doc(db, 'users', uid));
@@ -1833,7 +1971,7 @@ async function openEditAgentModal(uid) {
     document.querySelectorAll('.ea-perm:checked').forEach(el => { permissions[el.value] = true; });
     const btn = document.getElementById('ea-save');
     setBtnLoading(btn, true, 'Saving…');
-    try { await updateStaffAccount(uid, { name, permissions }); closeModal(); toast('Agent updated.', 'success'); navigateTo('users'); }
+    try { await updateStaffAccount(uid, { name, permissions }); closeModal(); toast('Agent updated.', 'success'); navigateTo('users', { forceRefresh: true }); }
     catch (err) { setBtnLoading(btn, false); toast(mapAuthError(err), 'error'); }
   });
 }
@@ -1859,7 +1997,7 @@ function renderMastersBody(tab) {
   const list = isDoctors ? state.doctors : state.tests;
   body.innerHTML = `
     <div class="table-wrap">
-      <div class="table-toolbar"><span class="u-muted" style="font-size:13px;">${list.length} ${isDoctors ? 'doctor(s)' : 'test(s)'}</span><button class="btn btn-primary btn-sm" id="mm-add">${icon('plus')}Add ${isDoctors ? 'Doctor' : 'Test'}</button></div>
+      <div class="table-toolbar"><span class="u-muted" style="font-size:13px;">${list.length} ${isDoctors ? 'doctor(s)' : 'test(s)'}</span><div class="u-flex u-gap-8"><button class="btn btn-secondary btn-sm" id="mm-import">${icon('upload')}Import</button><button class="btn btn-primary btn-sm" id="mm-add">${icon('plus')}Add ${isDoctors ? 'Doctor' : 'Test'}</button></div></div>
       <table><thead><tr><th>Name</th>${isDoctors ? '<th>Specialty</th>' : ''}<th></th></tr></thead>
       <tbody>${list.length ? list.map(item => `
         <tr><td style="font-weight:600;">${escapeHtml(item.name)}</td>${isDoctors ? `<td>${escapeHtml(item.specialty || '—')}</td>` : ''}
@@ -1868,6 +2006,7 @@ function renderMastersBody(tab) {
     </div>
   `;
   document.getElementById('mm-add').addEventListener('click', () => openMasterFormModal(tab, null));
+  document.getElementById('mm-import').addEventListener('click', () => openMasterImportModal(tab));
   body.querySelectorAll('[data-medit]').forEach(el => el.addEventListener('click', () => openMasterFormModal(tab, el.dataset.medit)));
   body.querySelectorAll('[data-mdel]').forEach(el => el.addEventListener('click', async () => {
     const ok = await confirmDialog({ title: `Delete ${escapeHtml(el.dataset.name)}?`, danger: true, confirmLabel: 'Delete', message: 'This master record will be permanently removed. Bookings that already reference it keep their saved values.' });
@@ -1931,7 +2070,7 @@ async function renderRecycleBinView(content, kind) {
   document.getElementById('rb-back').addEventListener('click', () => navigateTo(backView));
   content.querySelectorAll('[data-restore]').forEach(el => el.addEventListener('click', async () => {
     try {
-      if (isUsers) await restoreUser(el.dataset.restore); else await restoreBooking(kind, el.dataset.restore);
+      if (isUsers) await restoreUser(el.dataset.restore); else await restoreBooking(kind, el.dataset.restore, rows.find(r => r.id === el.dataset.restore));
       toast('Restored.', 'success'); navigateTo('recycle-bin', { kind });
     } catch (err) { toast(err.message, 'error'); }
   }));
@@ -1980,6 +2119,7 @@ async function renderRegisterListView(content, registerKey) {
       </div>
       <div class="table-toolbar" style="padding-top:0;justify-content:flex-end;">
         ${!state.isAgent ? `<button class="icon-btn" id="rl-recycle" title="Recycle Bin (Admin/Super Admin)">${icon('trash')}</button>` : ''}
+        ${!state.isAgent ? `<button class="icon-btn" id="rl-import" title="Import from Excel">${icon('upload')}</button>` : ''}
         <button class="icon-btn" id="rl-export" title="Export to Excel">${icon('download')}</button>
         <button class="btn btn-primary btn-sm" id="rl-new">${icon('plus')}New Booking</button>
       </div>
@@ -2008,6 +2148,8 @@ function wireRegisterListToolbar(registerKey) {
   }));
   const recycleBtn = document.getElementById('rl-recycle');
   if (recycleBtn) recycleBtn.addEventListener('click', () => navigateTo('recycle-bin', { kind: registerKey }));
+  const importBtn = document.getElementById('rl-import');
+  if (importBtn) importBtn.addEventListener('click', () => openImportModal(registerKey));
   document.getElementById('rl-new').addEventListener('click', () => navigateTo('register-form', { registerKey, id: null }));
   document.getElementById('rl-export').addEventListener('click', () => exportRegisterToExcel(registerKey));
 }
@@ -2079,12 +2221,215 @@ function renderRegisterTablePage(registerKey) {
   slot.querySelectorAll('[data-quickdel]').forEach(el => el.addEventListener('click', async () => {
     const ok = await confirmDialog({ title: 'Delete booking?', danger: true, confirmLabel: 'Move to Recycle Bin', message: `Booking <b>${escapeHtml(el.dataset.bid)}</b> will be moved to the recycle bin.` });
     if (!ok) return;
-    try { await softDeleteBooking(registerKey, el.dataset.quickdel); toast('Moved to recycle bin.', 'success'); loadAndRenderRegisterRows(registerKey); } catch (err) { toast(err.message, 'error'); }
+    const row = rows.find(r => r.id === el.dataset.quickdel);
+    try { await softDeleteBooking(registerKey, el.dataset.quickdel, row); toast('Moved to recycle bin.', 'success'); loadAndRenderRegisterRows(registerKey); } catch (err) { toast(err.message, 'error'); }
   }));
   const prev = document.getElementById('pg-prev'), next = document.getElementById('pg-next');
   if (prev) prev.addEventListener('click', () => { cache.page = Math.max(1, cache.page - 1); renderRegisterTablePage(registerKey); });
   if (next) next.addEventListener('click', () => { cache.page = cache.page + 1; renderRegisterTablePage(registerKey); });
 }
+/* ============================================================
+   IMPORT — template download + upload, for every register and for masters
+   ============================================================ */
+function readFileAsRows(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        resolve(XLSX.utils.sheet_to_json(sheet, { defval: '' }));
+      } catch (err) { reject(new Error("Could not read that file — make sure it's a .xlsx file.")); }
+    };
+    reader.onerror = () => reject(new Error('Could not read the file.'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+function downloadRegisterTemplate(registerKey) {
+  const reg = REGISTERS[registerKey];
+  const ws = XLSX.utils.aoa_to_sheet([reg.importCols.map(c => c.h), reg.importCols.map(c => c.sample || '')]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Template');
+  XLSX.writeFile(wb, `${reg.short.replace(/\s+/g, '_')}_Import_Template.xlsx`);
+}
+function downloadMasterImportTemplate(kind) {
+  const isDoctors = kind === 'doctors';
+  const ws = XLSX.utils.aoa_to_sheet([isDoctors ? ['Name', 'Specialty'] : ['Name'], isDoctors ? ['Dr. Kabir Hossain', 'Cardiology'] : ['CBC']]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Template');
+  XLSX.writeFile(wb, `${isDoctors ? 'Doctors' : 'Tests'}_Import_Template.xlsx`);
+}
+function parseRegisterImportRows(registerKey, rawRows) {
+  const reg = REGISTERS[registerKey];
+  const valid = [], invalid = [];
+  rawRows.forEach((raw, i) => {
+    const data = {}, errors = [];
+    reg.importCols.forEach((c) => {
+      let v = raw[c.h]; v = (v === undefined || v === null) ? '' : String(v).trim();
+      if (c.req && !v) errors.push(`${c.h} is required`);
+      data[c.k] = v;
+    });
+    if (data.appointmentDate && !/^\d{4}-\d{2}-\d{2}$/.test(data.appointmentDate)) {
+      const d = new Date(data.appointmentDate);
+      if (!isNaN(d)) data.appointmentDate = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+      else errors.push('Appointment Date must look like YYYY-MM-DD');
+    }
+    if (data.mobileNumber) { data.mobileNumber = normalizeMobile(data.mobileNumber); if (!validateMobile(data.mobileNumber)) errors.push('Mobile Number looks invalid'); }
+    if (!PRIORITY_OPTIONS.includes(data.priority)) data.priority = 'Normal';
+    if ('requestedTests' in data) data.requestedTests = data.requestedTests ? data.requestedTests.split(',').map(t => t.trim()).filter(Boolean) : [];
+    if (errors.length) invalid.push({ row: i + 2, errors }); else valid.push(data);
+  });
+  return { valid, invalid };
+}
+function parseMasterImportRows(kind, rawRows) {
+  const isDoctors = kind === 'doctors';
+  const valid = [], invalid = [];
+  rawRows.forEach((raw, i) => {
+    const name = String(raw['Name'] || '').trim();
+    if (!name) { invalid.push({ row: i + 2, errors: ['Name is required'] }); return; }
+    valid.push(isDoctors ? { name, specialty: String(raw['Specialty'] || '').trim() } : { name });
+  });
+  return { valid, invalid };
+}
+async function reserveBookingIdBlock(registerKey, count) {
+  const counterRef = doc(db, 'clinics', state.clinicId, 'counters', registerKey);
+  const startSeq = await runTransaction(db, async (tx) => {
+    const snap = await tx.get(counterRef);
+    const current = snap.exists() ? snap.data().seq : 0;
+    tx.set(counterRef, { seq: current + count }, { merge: true });
+    return current + 1;
+  });
+  const ids = [];
+  for (let i = 0; i < count; i++) ids.push(`${REGISTERS[registerKey].idPrefix}-${String(startSeq + i).padStart(6, '0')}`);
+  return ids;
+}
+async function bulkCreateBookings(registerKey, rowsData) {
+  if (!rowsData.length) return 0;
+  const ids = await reserveBookingIdBlock(registerKey, rowsData.length);
+  const colRef = collection(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection);
+  const dsDelta = {}, monthDelta = {};
+  const docsToWrite = rowsData.map((data, i) => {
+    const payload = Object.assign({}, data, {
+      bookingId: ids[i], patientNameLower: (data.patientName || '').toLowerCase(), status: 'Booked', deleted: false,
+      bookedBy: state.user.uid, bookedByName: state.user.name, bookedOn: serverTimestamp(), createdAt: serverTimestamp(), imported: true
+    });
+    dsDelta[`${registerKey}_total`] = (dsDelta[`${registerKey}_total`] || 0) + 1;
+    dsDelta[`${registerKey}_Booked`] = (dsDelta[`${registerKey}_Booked`] || 0) + 1;
+    if (data.appointmentDate) {
+      const mk = data.appointmentDate.slice(0, 7);
+      if (!monthDelta[mk]) monthDelta[mk] = {};
+      monthDelta[mk].total = (monthDelta[mk].total || 0) + 1;
+      monthDelta[mk].Booked = (monthDelta[mk].Booked || 0) + 1;
+    }
+    return { ref: doc(colRef), payload };
+  });
+  for (let i = 0; i < docsToWrite.length; i += 400) {
+    const chunk = docsToWrite.slice(i, i + 400);
+    const batch = writeBatch(db);
+    chunk.forEach(({ ref, payload }) => batch.set(ref, payload));
+    if (i === 0) {
+      const dsPatch = {};
+      Object.keys(dsDelta).forEach(k => { if (dsDelta[k]) dsPatch[k] = increment(dsDelta[k]); });
+      if (Object.keys(dsPatch).length) { dsPatch.updatedAt = serverTimestamp(); batch.set(doc(db, 'clinics', state.clinicId, 'meta', 'dashboardSummary'), dsPatch, { merge: true }); }
+      Object.keys(monthDelta).forEach((mk) => {
+        const d = monthDelta[mk], patch = { registerKey, monthKey: mk, updatedAt: serverTimestamp() };
+        let has = false;
+        Object.keys(d).forEach(k => { if (d[k]) { patch[k] = increment(d[k]); has = true; } });
+        if (has) batch.set(doc(db, 'clinics', state.clinicId, 'monthlySummaries', `${registerKey}_${mk}`), patch, { merge: true });
+      });
+    }
+    await batch.commit();
+  }
+  return docsToWrite.length;
+}
+async function bulkImportMasters(kind, rowsData) {
+  const existing = kind === 'doctors' ? state.doctors : state.tests;
+  const byNameLower = new Map(existing.map(x => [x.name.toLowerCase(), x]));
+  const colRef = collection(db, 'clinics', state.clinicId, kind);
+  for (let i = 0; i < rowsData.length; i += 450) {
+    const batch = writeBatch(db);
+    rowsData.slice(i, i + 450).forEach((data) => {
+      const match = byNameLower.get(data.name.toLowerCase());
+      batch.set(match ? doc(colRef, match.id) : doc(colRef), data, { merge: true });
+    });
+    await batch.commit();
+  }
+  const snap = await getDocs(colRef);
+  const list = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  if (kind === 'doctors') state.doctors = list; else state.tests = list;
+  return rowsData.length;
+}
+
+/* ---- Shared import modal shell — download-template / drop-file / preview / import ---- */
+function openGenericImportModal({ title, onDownloadTemplate, onParse, onImport }) {
+  openModal(`
+    <div class="modal-head"><h3>${escapeHtml(title)}</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-body">
+      <button class="btn btn-secondary btn-sm" id="im-template" style="margin-bottom:16px;">${icon('download')}Download Template</button>
+      <div class="file-drop" id="im-drop">${icon('upload')}<div style="font-size:13px;font-weight:600;margin-top:4px;">Click to choose a filled-in template</div><div class="hint">.xlsx, matching the downloaded template's columns</div><div class="fname" id="im-fname"></div></div>
+      <input type="file" id="im-file" accept=".xlsx,.xls" class="hidden">
+      <div id="im-preview"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary hidden" id="im-run">${icon('upload')}Import</button></div>
+  `, { wide: true });
+  document.getElementById('m-x').addEventListener('click', closeModal);
+  document.getElementById('m-cancel').addEventListener('click', closeModal);
+  document.getElementById('im-template').addEventListener('click', async () => {
+    const btn = document.getElementById('im-template');
+    setBtnLoading(btn, true, 'Preparing…');
+    try { await loadScriptOnce(XLSX_CDN); onDownloadTemplate(); } catch (err) { toast(err.message, 'error'); } finally { setBtnLoading(btn, false); }
+  });
+  let parsedValid = [];
+  const dropEl = document.getElementById('im-drop'), fileInput = document.getElementById('im-file');
+  dropEl.addEventListener('click', () => fileInput.click());
+  dropEl.addEventListener('dragover', (e) => { e.preventDefault(); dropEl.classList.add('drag'); });
+  dropEl.addEventListener('dragleave', () => dropEl.classList.remove('drag'));
+  dropEl.addEventListener('drop', (e) => { e.preventDefault(); dropEl.classList.remove('drag'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+  async function handleFile(file) {
+    document.getElementById('im-fname').textContent = file.name;
+    const preview = document.getElementById('im-preview');
+    preview.innerHTML = loaderHtml();
+    document.getElementById('im-run').classList.add('hidden');
+    try {
+      await loadScriptOnce(XLSX_CDN);
+      const rawRows = await readFileAsRows(file);
+      const { valid, invalid } = onParse(rawRows);
+      parsedValid = valid;
+      preview.innerHTML = `
+        <div class="u-flex u-gap-12" style="margin:14px 0;">
+          <span class="badge active">${valid.length} ready to import</span>
+          ${invalid.length ? `<span class="badge inactive">${invalid.length} skipped</span>` : ''}
+        </div>
+        ${invalid.length ? `<div class="table-wrap" style="max-height:180px;overflow-y:auto;"><table><thead><tr><th>Row</th><th>Issue</th></tr></thead><tbody>${invalid.slice(0, 30).map(x => `<tr><td>${x.row}</td><td>${escapeHtml(x.errors.join('; '))}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      `;
+      document.getElementById('im-run').classList.toggle('hidden', !valid.length);
+    } catch (err) { preview.innerHTML = `<p style="color:var(--red-600);font-size:13px;">${escapeHtml(err.message)}</p>`; }
+  }
+  document.getElementById('im-run').addEventListener('click', async () => {
+    const btn = document.getElementById('im-run');
+    setBtnLoading(btn, true, 'Importing…');
+    try { const n = await onImport(parsedValid); closeModal(); toast(`${n} record(s) imported.`, 'success'); }
+    catch (err) { setBtnLoading(btn, false); toast(err.message || 'Import failed.', 'error'); }
+  });
+}
+function openImportModal(registerKey) {
+  openGenericImportModal({
+    title: `Import ${REGISTERS[registerKey].label}`,
+    onDownloadTemplate: () => downloadRegisterTemplate(registerKey),
+    onParse: (rawRows) => parseRegisterImportRows(registerKey, rawRows),
+    onImport: async (rows) => { const n = await bulkCreateBookings(registerKey, rows); navigateTo(registerKey); return n; }
+  });
+}
+function openMasterImportModal(kind) {
+  openGenericImportModal({
+    title: `Import ${kind === 'doctors' ? 'Doctors' : 'Tests'}`,
+    onDownloadTemplate: () => downloadMasterImportTemplate(kind),
+    onParse: (rawRows) => parseMasterImportRows(kind, rawRows),
+    onImport: async (rows) => { const n = await bulkImportMasters(kind, rows); navigateTo('masters', { tab: kind }); return n; }
+  });
+}
+
 async function exportRegisterToExcel(registerKey) {
   const reg = REGISTERS[registerKey];
   const cache = state.registerCache[registerKey];
@@ -2108,7 +2453,7 @@ function registerExtraFieldsHtml(reg, existing) {
   if (reg.key === 'doctor' || reg.key === 'dental') {
     let html = `<div class="form-grid" style="margin-top:16px;">
       <div class="field-wrap"><label>Doctor Name <span class="req">*</span></label><div class="search-select" id="rf-doctor"></div></div>
-      <div class="field-wrap"><label>Specialty</label><input type="text" id="rf-specialty" value="${escapeHtml(existing && existing.specialty || '')}"></div>
+      <div class="field-wrap"><label>Specialty</label><input type="text" id="rf-specialty" value="${escapeHtml(existing && existing.specialty || '')}" readonly style="background:var(--paper-50);color:var(--slate-500);" placeholder="Auto-filled from Doctor Name"></div>
     </div>`;
     if (reg.key === 'dental') html += `<div class="form-grid" style="margin-top:16px;"><div class="field-wrap"><label>Treatment Type <span class="req">*</span></label><select id="rf-treatment">${optionsHtml(state.settings.dentalTreatmentTypes, existing && existing.treatmentType, { blank: '— Select —' })}</select></div></div>`;
     return html;
@@ -2290,7 +2635,7 @@ async function renderRegisterFormView(content, registerKey, id) {
 /* ============================================================
    REPORTS — register-wise Summary & Date-wise Detail
    ============================================================ */
-let reportChartInstance = null;
+let reportChartInstance = null, reportMonthChartInstance = null;
 function statusAccent(s) { return { Booked: 'blue', Completed: 'green', Cancelled: 'red', Rescheduled: 'amber' }[s] || 'teal'; }
 function startOfMonthISO() { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-01`; }
 
@@ -2320,7 +2665,9 @@ async function renderReportsView(content) {
   document.getElementById('rp-from').addEventListener('change', (e) => navigateTo('reports', { registerKey, tab, dateFrom: e.target.value, dateTo }));
   document.getElementById('rp-to').addEventListener('change', (e) => navigateTo('reports', { registerKey, tab, dateFrom, dateTo: e.target.value }));
   await loadAndRenderReport(registerKey, tab, dateFrom, dateTo);
-  document.getElementById('rp-export').addEventListener('click', () => exportReportToExcel(registerKey, tab, dateFrom, dateTo));
+  const exportBtn = document.getElementById('rp-export');
+  if (tab === 'detail') exportBtn.addEventListener('click', () => exportReportToExcel(registerKey, tab, dateFrom, dateTo));
+  else exportBtn.style.display = 'none';
 }
 
 let reportRowsCache = [];
@@ -2328,47 +2675,56 @@ async function loadAndRenderReport(registerKey, tab, dateFrom, dateTo) {
   const body = document.getElementById('rp-body');
   body.innerHTML = loaderHtml();
   try {
-    const rows = await fetchRegisterRows(registerKey, { dateFrom, dateTo });
-    reportRowsCache = rows;
-    if (tab === 'summary') await renderReportSummary(registerKey, rows);
-    else renderReportDetail(registerKey, rows);
+    if (tab === 'summary') {
+      const monthly = await getMonthlySummaries(state.clinicId, registerKey, dateFrom.slice(0, 7), dateTo.slice(0, 7));
+      await renderReportSummary(registerKey, monthly);
+    } else {
+      const rows = await fetchRegisterRows(registerKey, { dateFrom, dateTo });
+      reportRowsCache = rows;
+      renderReportDetail(registerKey, rows);
+    }
   } catch (err) {
     console.error(err);
     body.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load report</h4><p>${escapeHtml(err.message || '')}</p></div>`;
   }
 }
-async function renderReportSummary(registerKey, rows) {
+async function renderReportSummary(registerKey, monthly) {
   const body = document.getElementById('rp-body');
-  const total = rows.length;
   const byStatus = {}; STATUS_OPTIONS.forEach(s => byStatus[s] = 0);
-  rows.forEach(r => { const s = r.status || 'Booked'; byStatus[s] = (byStatus[s] || 0) + 1; });
-  const bySource = {};
-  rows.forEach(r => { const s = r.source || '—'; bySource[s] = (bySource[s] || 0) + 1; });
+  let total = 0;
+  monthly.forEach(m => { STATUS_OPTIONS.forEach(s => { byStatus[s] += m[s] || 0; }); total += m.total || 0; });
   if (!total) { body.innerHTML = `<div class="empty-state">${icon('barChart')}<h4>No data in this range</h4><p>Widen the date range to see a summary.</p></div>`; return; }
+  const monthsSorted = monthly.slice().sort((a, b) => a.monthKey.localeCompare(b.monthKey));
   body.innerHTML = `
     <div class="card-pad">
+      <p class="hint" style="margin-bottom:14px;">Pulled from precomputed monthly totals — fast even over a wide date range, no matter how much history exists.</p>
       <div class="stat-grid">
         <div class="stat-card accent-ink"><span class="lbl"><span class="stat-icon-badge badge-ink">${icon('calendar')}</span>Total</span><div class="val">${formatInt(total)}</div></div>
         ${STATUS_OPTIONS.map(s => `<div class="stat-card accent-${statusAccent(s)}"><span class="lbl"><span class="stat-icon-badge badge-${statusAccent(s)}">${icon('check')}</span>${s}</span><div class="val">${formatInt(byStatus[s])}</div></div>`).join('')}
       </div>
-      <div class="card card-pad" style="max-width:380px;margin:0 auto 24px;"><canvas id="rp-status-chart" height="230"></canvas></div>
-      <span class="section-label">By Booking Source</span>
-      <div class="table-wrap"><table><thead><tr><th>Source</th><th class="num">Count</th></tr></thead><tbody>
-        ${Object.keys(bySource).sort((a, b) => bySource[b] - bySource[a]).map(s => `<tr><td>${escapeHtml(s)}</td><td class="num">${formatInt(bySource[s])}</td></tr>`).join('')}
-      </tbody></table></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:10px;">
+        <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14px;margin-bottom:10px;">By Status</h3><canvas id="rp-status-chart" height="220"></canvas></div>
+        <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14px;margin-bottom:10px;">By Month</h3><canvas id="rp-month-chart" height="220"></canvas></div>
+      </div>
     </div>
   `;
-  const ctx = document.getElementById('rp-status-chart');
   if (reportChartInstance) { reportChartInstance.destroy(); reportChartInstance = null; }
+  if (reportMonthChartInstance) { reportMonthChartInstance.destroy(); reportMonthChartInstance = null; }
   try { await loadScriptOnce(CHARTJS_CDN); } catch (err) { return; }
+  const ctx = document.getElementById('rp-status-chart');
   if (ctx && window.Chart && document.body.contains(ctx)) {
     reportChartInstance = new Chart(ctx, {
       type: 'doughnut',
-      data: {
-        labels: STATUS_OPTIONS,
-        datasets: [{ data: STATUS_OPTIONS.map(s => byStatus[s]), backgroundColor: ['#2E77E0', '#1FAA6D', '#DC2626', '#DE7F1E'], borderWidth: 0 }]
-      },
-      options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 12 }, padding: 14 } } }, cutout: '65%', animation: { animateScale: true, duration: 700 } }
+      data: { labels: STATUS_OPTIONS, datasets: [{ data: STATUS_OPTIONS.map(s => byStatus[s]), backgroundColor: ['#2E77E0', '#1FAA6D', '#DC2626', '#DE7F1E'], borderWidth: 0 }] },
+      options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11.5 }, padding: 10 } } }, cutout: '65%', animation: { animateScale: true, duration: 700 } }
+    });
+  }
+  const mCtx = document.getElementById('rp-month-chart');
+  if (mCtx && window.Chart && document.body.contains(mCtx)) {
+    reportMonthChartInstance = new Chart(mCtx, {
+      type: 'bar',
+      data: { labels: monthsSorted.map(m => m.monthKey), datasets: [{ data: monthsSorted.map(m => m.total || 0), backgroundColor: '#14948F', borderRadius: 6, maxBarThickness: 40 }] },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, animation: { duration: 700 } }
     });
   }
 }
@@ -2415,8 +2771,11 @@ async function getDashboardData() {
   const today = todayISO();
   const weekEnd = addDaysISO(today, 6);
   const perRegister = {};
-  await Promise.all(registersToShow.map(async (k) => { perRegister[k] = await fetchRegisterRows(k, { dateFrom: today, dateTo: weekEnd }); }));
-  return { registersToShow, perRegister, today };
+  const [summary] = await Promise.all([
+    getDashboardSummary(state.clinicId),
+    ...registersToShow.map(async (k) => { perRegister[k] = await fetchRegisterRows(k, { dateFrom: today, dateTo: weekEnd }); })
+  ]);
+  return { registersToShow, perRegister, today, summary };
 }
 function registerTileHtml(k) {
   const reg = REGISTERS[k];
@@ -2439,7 +2798,8 @@ async function renderDashboardView(content) {
   content.innerHTML = loaderHtml();
   let data;
   try { data = await getDashboardData(); } catch (err) { content.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load dashboard</h4></div>`; return; }
-  const { registersToShow, perRegister, today } = data;
+  const { registersToShow, perRegister, today, summary } = data;
+  const allTimeTotal = registersToShow.reduce((sum, k) => sum + (summary[`${k}_total`] || 0), 0);
   const todayRows = {}; let todayTotal = 0, weekTotal = 0;
   const statusToday = {}; STATUS_OPTIONS.forEach(s => statusToday[s] = 0);
   registersToShow.forEach(k => {
@@ -2459,6 +2819,7 @@ async function renderDashboardView(content) {
       <div class="stat-card accent-teal"><span class="lbl"><span class="stat-icon-badge badge-teal">${icon('barChart')}</span>Next 7 Days</span><div class="val" id="dk-week">0</div></div>
       <div class="stat-card accent-green"><span class="lbl"><span class="stat-icon-badge badge-green">${icon('check')}</span>Completed Today</span><div class="val c-green" id="dk-completed">0</div></div>
       <div class="stat-card accent-red"><span class="lbl"><span class="stat-icon-badge badge-red">${icon('x')}</span>Cancelled Today</span><div class="val" id="dk-cancelled">0</div></div>
+      <div class="stat-card accent-violet"><span class="lbl"><span class="stat-icon-badge badge-violet">${icon('star')}</span>All-Time Bookings</span><div class="val" id="dk-alltime">0</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:20px;" id="dk-chart-grid">
       <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Register</h3><canvas id="dk-register-chart" height="200"></canvas></div>
@@ -2480,6 +2841,7 @@ async function renderDashboardView(content) {
   animateCountUp(document.getElementById('dk-week'), weekTotal);
   animateCountUp(document.getElementById('dk-completed'), statusToday.Completed || 0);
   animateCountUp(document.getElementById('dk-cancelled'), statusToday.Cancelled || 0);
+  animateCountUp(document.getElementById('dk-alltime'), allTimeTotal);
 
   if (dashRegisterChart) { dashRegisterChart.destroy(); dashRegisterChart = null; }
   if (dashStatusChart) { dashStatusChart.destroy(); dashStatusChart = null; }
@@ -2548,6 +2910,11 @@ async function renderSettingsView(content) {
       <div id="st-treat-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px;"></div>
       <div class="u-flex u-gap-8"><input type="text" id="st-new-treat" placeholder="Add a treatment type…" style="max-width:220px;"><button class="btn btn-secondary btn-sm" id="st-add-treat">${icon('plus')}Add</button></div>
     </div>
+    <div class="card card-pad" style="margin-bottom:18px;max-width:760px;">
+      <span class="section-label">Data &amp; Performance</span>
+      <p class="hint" style="margin-bottom:12px;">Dashboard and Report summaries update automatically as bookings are created, edited or deleted. If numbers ever look off — e.g. after data was edited directly in the Firebase console — recalculate them from scratch here.</p>
+      <button class="btn btn-secondary btn-sm" id="st-recalc">${icon('refresh')}Recalculate Summary</button>
+    </div>
     <div class="card card-pad" style="max-width:760px;">
       <span class="section-label">Change Password</span>
       <div class="form-grid" style="margin-top:10px;">
@@ -2557,6 +2924,15 @@ async function renderSettingsView(content) {
       <button class="btn btn-secondary btn-sm" id="st-change-pw" style="margin-top:14px;">${icon('lock')}Update Password</button>
     </div>
   `;
+  document.getElementById('st-recalc').addEventListener('click', async () => {
+    const ok = await confirmDialog({ title: 'Recalculate summary?', confirmLabel: 'Recalculate', message: 'This re-reads every booking in this clinic once and rebuilds the dashboard and report totals from scratch. Takes a few seconds for a lot of data; everything else keeps working normally while it runs.' });
+    if (!ok) return;
+    const btn = document.getElementById('st-recalc');
+    setBtnLoading(btn, true, 'Recalculating…');
+    try { const r = await reconcileClinicSummary(state.clinicId); toast(`Summary rebuilt across ${r.months} month(s).`, 'success'); }
+    catch (err) { toast(err.message || 'Recalculate failed.', 'error'); }
+    finally { setBtnLoading(btn, false); }
+  });
   function renderChips() {
     document.getElementById('st-sources-chips').innerHTML = sources.length ? sources.map(x => chipHtml(x, 'rm-src')).join('') : '<span class="u-muted" style="font-size:12.5px;">None yet</span>';
     document.getElementById('st-treat-chips').innerHTML = treatments.length ? treatments.map(x => chipHtml(x, 'rm-treat')).join('') : '<span class="u-muted" style="font-size:12.5px;">None yet</span>';
