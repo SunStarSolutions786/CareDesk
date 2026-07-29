@@ -93,17 +93,47 @@ Any static host works — Firebase Hosting, Netlify, a plain web server, or
 just opening the file locally for testing. It's a single self-contained HTML
 file; there's nothing to build.
 
+## 6. (Optional) Complete hard delete — deploy the Cloud Function
+
+Deleting a clinic or purging a staff member from the recycle bin already
+deletes everything in Firestore straight from the app. The one thing a
+client-side app is *never* allowed to do — by Firebase's own design, not a
+bug — is delete *another person's* sign-in (Auth) account; only trusted
+server code can do that. The included `functions/` folder is that trusted
+server code. It's optional: without it, hard-deleted staff simply lose all
+access and data immediately (their empty sign-in shell just sits unused) —
+deploy this only if you want that shell gone too.
+
+**Requires the Blaze (pay-as-you-go) plan** — Cloud Functions can't deploy on
+the free Spark plan. In practice this stays free: the free quota (2M
+invocations/month) is far more than clinic-deletion volume would ever use.
+
+1. Install the [Firebase CLI](https://firebase.google.com/docs/cli) if you don't have it: `npm install -g firebase-tools`
+2. In the Firebase Console, upgrade the project to **Blaze** (Project settings → Usage and billing).
+3. From a terminal, in the same folder as `index.html`, `firebase.json`, `.firebaserc` and `functions/`:
+   ```
+   firebase login
+   firebase deploy --only functions
+   ```
+   (`.firebaserc` already points at this project — `caredesk-65c0c` — so there's nothing else to configure unless you're using a different project.)
+4. That's it — no changes needed in `index.html`. It already calls these
+   functions when deleting a clinic or purging a user, and simply skips that
+   step (Firestore data still gets deleted normally) if they're not deployed.
+
 ---
 
 ## How the pieces fit together
 
-- **Clinics** — each clinic (clinic/center) has its own doctors, tests,
-  bookings and staff. A Super Admin can manage every clinic from **Clinics**;
-  entering a clinic drops them into that clinic's dashboard just like a
-  Clinic Admin sees it.
+- **Clinics** — each clinic has its own doctors, tests, bookings and staff.
+  A Super Admin can manage every clinic from **Clinics**; entering a clinic
+  drops them into that clinic's dashboard just like a Clinic Admin sees it.
 - **Roles** — Super Admin (all clinics) → Clinic Admin (their one clinic,
   full access) → Agent (their one clinic, only the registers they've been
   granted — set per-agent under **User Management**).
+- **Quick status change** — the Status column on every register's list is a
+  live dropdown, not just a label — change Booked → Completed/Cancelled/
+  Rescheduled right from the list, no need to open the full edit form. Every
+  change is still logged to that booking's History either way.
 - **Recycle Bin** — deleting a booking or a staff account never deletes it
   outright; it's soft-deleted and shows up in that register's (or Users')
   Recycle Bin. **Only Admins and Super Admins can open a Recycle Bin** —
@@ -121,8 +151,9 @@ file; there's nothing to build.
   `delete` operation itself is blocked for them at the database level
   (`firestore.rules`), not just hidden in the UI.
 - **Bulk Delete** — Super Admin → Clinics → **Manage** on a clinic → pick a
-  register and a date range. Also a *permanent* delete, separate from the
-  per-record soft-delete everyone else uses.
+  register and a date range, or clear an entire Doctors/Tests master list in
+  one go. Also a *permanent* delete, separate from the per-record soft-delete
+  everyone else uses.
 - **History** — every booking has a full, append-only audit trail: who
   created it, every field anyone changed (old value → new value), and every
   soft-delete/restore, each with who and when. Open any existing booking and
@@ -156,11 +187,13 @@ file; there's nothing to build.
 
 ## Known limitations, by design
 
-- **Purging a staff account from the recycle bin** removes their profile and
-  access immediately, but can't delete their underlying Firebase *Auth*
-  account from the browser — that needs the Admin SDK (a Cloud Function),
-  which is outside a static, client-only app. It's harmless to leave: without
-  a profile document, they can no longer sign in.
+- **Purging a staff account from the recycle bin, or deleting a whole
+  clinic,** deletes the Firestore data straight from the app either way —
+  and also deletes the underlying Firebase *Auth* sign-in accounts too, if
+  the optional Cloud Function (step 6 in setup) is deployed. Without it,
+  Firestore data is still fully removed and access is revoked immediately
+  either way (no profile = can't sign in); the Auth account shell just isn't
+  physically deleted until that function runs.
 - **Deleting a clinic, or purging a single booking,** removes that document,
   but its `history` subcollection isn't recursively deleted by the client
   SDK (Firestore has no client-side recursive delete). Those orphaned

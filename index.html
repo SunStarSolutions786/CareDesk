@@ -273,6 +273,7 @@ nav.side-nav{flex:1;padding:6px 12px;overflow-y:auto;}
 .card-head h3{font-family:var(--font-display);font-size:15px;font-weight:600;}
 
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px;}
+.clinic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,330px));gap:14px;margin-bottom:22px;}
 .stat-card{
   background:var(--paper-0);border:1px solid var(--line-200);border-radius:var(--radius-md);padding:18px 20px;
   transition:transform var(--transition),box-shadow var(--transition);position:relative;overflow:hidden;
@@ -358,6 +359,7 @@ textarea{resize:vertical;min-height:64px;}
 .summary-pill{
   display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--teal-700);
   background:var(--teal-50);border:1px solid var(--teal-100);padding:5px 12px;border-radius:99px;
+  white-space:nowrap;flex-shrink:0;
 }
 .form-section-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:var(--teal-100);color:var(--teal-700);margin-right:8px;}
 .form-section-icon svg{width:14px;height:14px;}
@@ -392,6 +394,20 @@ td.id-cell{font-family:var(--font-mono);letter-spacing:0.3px;font-weight:600;}
 .badge.pr-normal{background:var(--line-100);color:var(--slate-500);}
 .badge.pr-urgent{background:var(--amber-100);color:var(--amber-600);}
 .badge.pr-vip{background:var(--violet-100);color:var(--violet-600);}
+
+.status-select{
+  appearance:none;-webkit-appearance:none;border:1.5px solid transparent;cursor:pointer;
+  font-size:11.5px;font-weight:700;padding:4px 22px 4px 10px;border-radius:99px;letter-spacing:0.2px;
+  background-repeat:no-repeat;background-position:right 7px center;background-size:9px;
+  background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");
+  transition:opacity var(--transition);
+}
+.status-select:hover{border-color:currentColor;}
+.status-select:disabled{opacity:0.55;cursor:wait;}
+.status-select.st-booked{background-color:var(--blue-100);color:var(--blue-600);}
+.status-select.st-completed{background-color:var(--green-100);color:var(--green-600);}
+.status-select.st-cancelled{background-color:var(--red-100);color:var(--red-600);}
+.status-select.st-rescheduled{background-color:var(--amber-100);color:var(--amber-600);}
 
 .table-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;flex-wrap:wrap;}
 .search-box{position:relative;min-width:220px;flex:1;max-width:320px;}
@@ -622,6 +638,7 @@ import {
   getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, runTransaction, writeBatch, serverTimestamp, increment
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-functions.js";
 
 /* ============================================================
    FIREBASE CONFIG — PLACEHOLDER
@@ -639,16 +656,33 @@ const firebaseConfig = {
 };
 const CONFIG_IS_PLACEHOLDER = Object.values(firebaseConfig).some(v => String(v).startsWith('YOUR_'));
 
-let app = null, auth = null, db = null, INIT_ERROR = null;
+let app = null, auth = null, db = null, functionsInstance = null, INIT_ERROR = null;
 if (!CONFIG_IS_PLACEHOLDER) {
   try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
+    functionsInstance = getFunctions(app); // used only for the optional Auth-account cleanup functions below
   } catch (err) {
     console.error('Firebase initialization failed:', err);
     INIT_ERROR = err;
   }
+}
+/* Deleting a booking, a clinic's data, etc. all happen straight from the client — Firestore
+   security rules are enough for that. But deleting *another user's* Firebase Auth account is
+   never allowed from client code, on purpose (Firebase's client SDK can only ever delete the
+   *currently signed-in* user's own account) — only a trusted server can do that, via the Admin
+   SDK. deploy/functions (optional, requires Blaze) provides that; these two helpers call it if
+   it's there and quietly no-op if it isn't, so the app works either way. */
+async function tryDeleteAuthUser(uid) {
+  if (!functionsInstance) return false;
+  try { await httpsCallable(functionsInstance, 'deleteUserAuthAccount')({ uid }); return true; }
+  catch (err) { console.warn('Auth account cleanup skipped (Cloud Function not deployed, or failed):', err.message || err); return false; }
+}
+async function tryDeleteClinicAuthUsers(clinicId) {
+  if (!functionsInstance) return null;
+  try { const res = await httpsCallable(functionsInstance, 'deleteClinicAuthUsers')({ clinicId }); return res.data; }
+  catch (err) { console.warn('Clinic Auth cleanup skipped (Cloud Function not deployed, or failed):', err.message || err); return null; }
 }
 // Secondary app instance — used only to create new user accounts (agents/admins)
 // without disturbing the currently signed-in session, since createUserWithEmailAndPassword
@@ -720,7 +754,7 @@ const REGISTERS = {
       { h: 'Appointment Date (YYYY-MM-DD)', k: 'appointmentDate', req: true, sample: todayISO() },
       { h: 'Time Slot', k: 'timeSlot', req: true, sample: '10:00 AM – 10:15 AM' },
       { h: 'Patient Name', k: 'patientName', req: true, sample: 'Rahim Uddin' },
-      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '01712345678' },
+      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '9876543210' },
       { h: 'Doctor Name', k: 'doctorName', req: true, sample: 'Dr. Kabir Hossain' },
       { h: 'Specialty', k: 'specialty', req: false, sample: 'Cardiology' },
       { h: 'Priority (Normal/Urgent/VIP)', k: 'priority', req: false, sample: 'Normal' },
@@ -739,7 +773,7 @@ const REGISTERS = {
       { h: 'Appointment Date (YYYY-MM-DD)', k: 'appointmentDate', req: true, sample: todayISO() },
       { h: 'Time Slot', k: 'timeSlot', req: true, sample: '10:00 AM – 10:15 AM' },
       { h: 'Patient Name', k: 'patientName', req: true, sample: 'Rahim Uddin' },
-      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '01712345678' },
+      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '9876543210' },
       { h: 'Requested Tests (comma-separated)', k: 'requestedTests', req: true, sample: 'CBC, Lipid Profile' },
       { h: 'Priority (Normal/Urgent/VIP)', k: 'priority', req: false, sample: 'Normal' },
       { h: 'Booking Source', k: 'source', req: true, sample: 'Phone' },
@@ -757,11 +791,11 @@ const REGISTERS = {
       { h: 'Appointment Date (YYYY-MM-DD)', k: 'appointmentDate', req: true, sample: todayISO() },
       { h: 'Preferred Time Slot', k: 'timeSlot', req: true, sample: '09:00 AM – 09:30 AM' },
       { h: 'Patient Name', k: 'patientName', req: true, sample: 'Rahim Uddin' },
-      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '01712345678' },
+      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '9876543210' },
       { h: 'Requested Tests (comma-separated)', k: 'requestedTests', req: true, sample: 'CBC, Blood Sugar' },
-      { h: 'Address', k: 'address', req: true, sample: 'House 12, Road 5' },
-      { h: 'Area / Locality', k: 'area', req: false, sample: 'Gulshan' },
-      { h: 'PIN Code', k: 'pin', req: false, sample: '1212' },
+      { h: 'Address', k: 'address', req: true, sample: '23/1 Rashbehari Avenue' },
+      { h: 'Area / Locality', k: 'area', req: false, sample: 'Salt Lake' },
+      { h: 'PIN Code', k: 'pin', req: false, sample: '700091' },
       { h: 'Priority (Normal/Urgent/VIP)', k: 'priority', req: false, sample: 'Normal' },
       { h: 'Booking Source', k: 'source', req: true, sample: 'WhatsApp' },
       { h: 'Remarks', k: 'remarks', req: false, sample: '' }
@@ -779,7 +813,7 @@ const REGISTERS = {
       { h: 'Appointment Date (YYYY-MM-DD)', k: 'appointmentDate', req: true, sample: todayISO() },
       { h: 'Time Slot', k: 'timeSlot', req: true, sample: '11:00 AM – 11:20 AM' },
       { h: 'Patient Name', k: 'patientName', req: true, sample: 'Rahim Uddin' },
-      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '01712345678' },
+      { h: 'Mobile Number', k: 'mobileNumber', req: true, sample: '9876543210' },
       { h: 'Doctor Name', k: 'doctorName', req: true, sample: 'Dr. Nusrat Jahan' },
       { h: 'Treatment Type', k: 'treatmentType', req: true, sample: 'Consultation' },
       { h: 'Priority (Normal/Urgent/VIP)', k: 'priority', req: false, sample: 'Normal' },
@@ -890,6 +924,20 @@ function debounce(fn, wait) {
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
 }
 function pad2(n) { return String(n).padStart(2, '0'); }
+// Parses the leading "HH:MM AM/PM" off a "HH:MM AM/PM – HH:MM AM/PM" time-slot string into
+// minutes-since-midnight, for chronological sorting. A plain string/localeCompare sort gets
+// the noon/1pm boundary wrong — "01:00 PM" < "12:00 PM" as text even though 1pm is later.
+function timeSlotSortKey(timeSlotStr) {
+  if (!timeSlotStr) return 0;
+  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(String(timeSlotStr).trim());
+  if (!m) return 0;
+  let h = parseInt(m[1], 10);
+  const mins = parseInt(m[2], 10);
+  const ap = m[3].toUpperCase();
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return h * 60 + mins;
+}
 function todayISO() {
   const d = new Date();
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -903,7 +951,7 @@ function formatDateHuman(iso) {
   if (!iso) return '—';
   const d = new Date(iso + 'T00:00:00');
   if (isNaN(d)) return iso;
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 function formatDateTimeHuman(input) {
   let d;
@@ -911,7 +959,7 @@ function formatDateTimeHuman(input) {
   if (typeof input.toDate === 'function') d = input.toDate();
   else d = new Date(input);
   if (isNaN(d)) return '—';
-  return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 }
 function validateEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim()); }
 function validateMobile(v) {
@@ -1344,7 +1392,7 @@ async function renderClinicsListView(content) {
       <p class="u-muted" style="font-size:13.5px;max-width:520px;">Each clinic has its own doctors, tests, bookings and staff. Enter a clinic to manage its registers, or use Manage to configure staff and bulk-delete tools.</p>
       <button class="btn btn-primary" id="new-clinic-btn">${icon('plus')}New Clinic</button>
     </div>
-    ${clinics.length ? `<div class="stat-grid">${clinics.map(b => clinicCardHtml(b)).join('')}</div>` : `
+    ${clinics.length ? `<div class="clinic-grid">${clinics.map(b => clinicCardHtml(b)).join('')}</div>` : `
       <div class="empty-state">${icon('building2')}<h4>No clinics yet</h4><p>Create your first clinic to start taking bookings.</p></div>
     `}
   `;
@@ -1377,7 +1425,7 @@ function openCreateClinicModal() {
   openModal(`
     <div class="modal-head"><h3>New Clinic</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
     <div class="modal-body">
-      <div class="field-wrap" style="margin-bottom:16px;"><label>Clinic Name <span class="req">*</span></label><input type="text" id="nb-name" placeholder="e.g. Gulshan Diagnostic Center"></div>
+      <div class="field-wrap" style="margin-bottom:16px;"><label>Clinic Name <span class="req">*</span></label><input type="text" id="nb-name" placeholder="e.g. Salt Lake Diagnostic Center"></div>
       <div class="divider"></div>
       <span class="section-label">First admin account (optional — add later if you prefer)</span>
       <div class="form-grid">
@@ -1435,6 +1483,13 @@ async function openManageClinicModal(clinicId) {
       </div>
       <button class="btn btn-danger btn-sm" id="bd-run-btn" style="margin-top:12px;">${icon('trash')}Bulk Delete</button>
       <div class="divider"></div>
+      <span class="section-label">Clear Master List (Super Admin only)</span>
+      <p class="hint" style="margin-bottom:10px;">Permanently deletes every entry in a master list. Bookings that already reference a deleted doctor/test keep their saved values.</p>
+      <div class="form-grid" style="align-items:end;">
+        <div class="field-wrap"><label>Master List</label><select id="bd-master"><option value="doctors">Doctors</option><option value="tests">Tests</option></select></div>
+        <div class="field-wrap"><button class="btn btn-danger btn-sm" id="bd-master-run-btn">${icon('trash')}Delete All</button></div>
+      </div>
+      <div class="divider"></div>
       <span class="section-label" style="color:var(--red-600);">Danger Zone</span>
       <button class="btn btn-danger btn-sm" id="mb-delete-clinic-btn">${icon('trash')}Delete This Clinic Entirely</button>
     </div>
@@ -1466,12 +1521,24 @@ async function openManageClinicModal(clinicId) {
       toast(`${n} booking(s) permanently deleted.`, 'success');
     } catch (err) { toast(err.message || 'Bulk delete failed.', 'error'); }
   });
+  document.getElementById('bd-master-run-btn').addEventListener('click', async () => {
+    const kind = document.getElementById('bd-master').value;
+    const ok = await confirmDialog({ title: 'Clear master list?', danger: true, confirmLabel: 'Delete All', message: `This permanently deletes every <b>${kind === 'doctors' ? 'Doctor' : 'Test'}</b> in <b>${escapeHtml(b.name)}</b>. This cannot be undone.` });
+    if (!ok) return;
+    toast('Deleting…', 'info');
+    try { const n = await bulkClearMasterList(clinicId, kind); toast(`${n} ${kind === 'doctors' ? 'doctor(s)' : 'test(s)'} permanently deleted.`, 'success'); }
+    catch (err) { toast(err.message || 'Delete failed.', 'error'); }
+  });
   document.getElementById('mb-delete-clinic-btn').addEventListener('click', async () => {
     const ok = await confirmDialog({ title: 'Delete clinic entirely?', danger: true, confirmLabel: 'Delete Everything', message: `This permanently deletes <b>${escapeHtml(b.name)}</b> — all its bookings, doctors, tests and staff accounts. This cannot be undone.` });
     if (!ok) return;
     toast('Deleting clinic…', 'info');
-    try { await deleteClinicCascade(clinicId); toast('Clinic deleted.', 'success'); navigateTo('sa-clinics'); }
-    catch (err) { toast(err.message || 'Delete failed.', 'error'); }
+    try {
+      const authResult = await deleteClinicCascade(clinicId);
+      if (authResult) toast(`Clinic deleted — ${authResult.deleted} Auth account(s) removed too.`, 'success');
+      else toast('Clinic data deleted. Auth accounts remain (Cloud Function not deployed — see README).', 'success');
+      navigateTo('sa-clinics');
+    } catch (err) { toast(err.message || 'Delete failed.', 'error'); }
   });
 }
 function clinicAdminRowHtml(a) {
@@ -1494,6 +1561,17 @@ function content_wireClinicAdminRowButtons(clinicId) {
     if (!ok) return;
     try { await softDeleteUser(el.dataset.removeAdmin); toast('Admin moved to recycle bin.', 'success'); openManageClinicModal(clinicId); } catch (err) { toast(err.message, 'error'); }
   }));
+}
+async function bulkClearMasterList(clinicId, kind) {
+  const snap = await getDocs(collection(db, 'clinics', clinicId, kind));
+  const docs = snap.docs;
+  for (let i = 0; i < docs.length; i += 450) {
+    const batch = writeBatch(db);
+    docs.slice(i, i + 450).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+  if (clinicId === state.clinicId) { if (kind === 'doctors') state.doctors = []; else state.tests = []; }
+  return docs.length;
 }
 async function bulkDeleteRegisterByDateRange(clinicId, registerKey, fromISO, toISO) {
   const colRef = collection(db, 'clinics', clinicId, REGISTERS[registerKey].collection);
@@ -1552,6 +1630,10 @@ async function deleteClinicCascade(clinicId) {
   const subs = ['doctors', 'tests', 'counters', 'monthlySummaries', 'meta']
     .concat(REGISTER_KEYS.map(k => REGISTERS[k].collection));
   for (const s of subs) await deleteAllInSubcollection(clinicId, s);
+  // Must run before the Firestore user docs are deleted below — the Cloud Function looks
+  // up who belongs to this clinic via those same records. Silently returns null if the
+  // function isn't deployed; the Firestore-side deletion below still completes either way.
+  const authResult = await tryDeleteClinicAuthUsers(clinicId);
   const usersSnap = await getDocs(query(collection(db, 'users'), where('clinicId', '==', clinicId)));
   const uDocs = usersSnap.docs;
   for (let i = 0; i < uDocs.length; i += 450) {
@@ -1560,6 +1642,7 @@ async function deleteClinicCascade(clinicId) {
     await batch.commit();
   }
   await deleteDoc(doc(db, 'clinics', clinicId));
+  return authResult;
 }
 
 /* ============================================================
@@ -1589,7 +1672,9 @@ async function restoreUser(uid) {
   await updateDoc(doc(db, 'users', uid), { deleted: false, deletedAt: null, deletedBy: null, deletedByName: null });
 }
 async function purgeUserPermanently(uid) {
+  const authDeleted = await tryDeleteAuthUser(uid);
   await deleteDoc(doc(db, 'users', uid));
+  return authDeleted;
 }
 async function fetchClinicAgents(clinicId, includeDeleted) {
   const snap = await getDocs(query(collection(db, 'users'), where('clinicId', '==', clinicId)));
@@ -1700,6 +1785,15 @@ async function updateBooking(registerKey, id, data, oldData) {
   await batch.commit();
   const changes = diffBookingFields(oldData, data);
   if (changes.length) await logBookingHistory(registerKey, id, 'updated', changes);
+}
+async function updateBookingStatusOnly(registerKey, id, oldRow, newStatus) {
+  const ref = doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id);
+  const newRow = Object.assign({}, oldRow, { status: newStatus });
+  const batch = writeBatch(db);
+  batch.update(ref, { status: newStatus, updatedAt: serverTimestamp(), updatedBy: state.user.uid, updatedByName: state.user.name });
+  stageBookingSummaryChange(batch, state.clinicId, registerKey, oldRow, newRow);
+  await batch.commit();
+  await logBookingHistory(registerKey, id, 'updated', [{ field: 'status', label: 'Status', from: oldRow.status || 'Booked', to: newStatus }]);
 }
 async function softDeleteBooking(registerKey, id, existingRow) {
   const ref = doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id);
@@ -1840,7 +1934,10 @@ async function fetchRegisterRows(registerKey, { dateFrom, dateTo, searchTerm, in
     rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   }
   rows = rows.filter(r => (includeDeleted ? true : !r.deleted));
-  rows.sort((a, b) => (a.appointmentDate + (a.timeSlot || '')).localeCompare(b.appointmentDate + (b.timeSlot || '')));
+  rows.sort((a, b) => {
+    const dc = (a.appointmentDate || '').localeCompare(b.appointmentDate || '');
+    return dc !== 0 ? dc : timeSlotSortKey(a.timeSlot) - timeSlotSortKey(b.timeSlot);
+  });
   return rows;
 }
 async function fetchDeletedRegisterRows(registerKey, dateFrom, dateTo) {
@@ -2078,8 +2175,14 @@ async function renderRecycleBinView(content, kind) {
     const ok = await confirmDialog({ title: 'Delete permanently?', danger: true, confirmLabel: 'Delete Forever', message: 'This cannot be undone.' });
     if (!ok) return;
     try {
-      if (isUsers) await purgeUserPermanently(el.dataset.purge); else await purgeBookingPermanently(kind, el.dataset.purge);
-      toast('Permanently deleted.', 'success'); navigateTo('recycle-bin', { kind });
+      if (isUsers) {
+        const authDeleted = await purgeUserPermanently(el.dataset.purge);
+        toast(authDeleted ? 'Permanently deleted, including sign-in access.' : 'Profile deleted. Sign-in access remains (Cloud Function not deployed — see README).', 'success');
+      } else {
+        await purgeBookingPermanently(kind, el.dataset.purge);
+        toast('Permanently deleted.', 'success');
+      }
+      navigateTo('recycle-bin', { kind });
     } catch (err) { toast(err.message, 'error'); }
   }));
 }
@@ -2097,7 +2200,7 @@ function recycleRowHtml(r, kind, isUsers) {
    BOOKING REGISTER — shared list engine (used by all 4 registers)
    ============================================================ */
 const PAGE_SIZE = 25;
-function defaultRegisterFilters() { return { dateFrom: todayISO(), dateTo: todayISO(), status: 'All', priority: 'All', search: '' }; }
+function defaultRegisterFilters() { return { dateFrom: todayISO(), dateTo: todayISO(), status: 'Booked', priority: 'All', search: '' }; }
 function loaderHtml() { return `<div class="u-center" style="padding:60px 0;"><span class="loader-ring"></span></div>`; }
 
 async function renderRegisterListView(content, registerKey) {
@@ -2109,19 +2212,17 @@ async function renderRegisterListView(content, registerKey) {
     <div class="table-wrap">
       <div class="table-toolbar">
         <div class="search-box">${icon('search')}<input type="text" id="rl-search" placeholder="Booking ID, patient or mobile…" value="${escapeHtml(f.search)}"></div>
-        <div class="pill-filters" id="rl-status-pills">${['All'].concat(STATUS_OPTIONS).map(s => `<button class="pill ${f.status === s ? 'active' : ''}" data-status="${s}">${s}</button>`).join('')}</div>
-        <div class="u-flex u-gap-8" style="margin-left:auto;align-items:center;flex-wrap:wrap;">
-          <input type="date" id="rl-from" value="${f.dateFrom}" style="width:150px;">
-          <span class="u-muted" style="font-size:12px;">to</span>
-          <input type="date" id="rl-to" value="${f.dateTo}" style="width:150px;">
-          <select id="rl-priority" style="width:120px;"><option value="All">Priority</option>${optionsHtml(PRIORITY_OPTIONS, f.priority === 'All' ? '' : f.priority)}</select>
+        <select id="rl-status" style="width:128px;">${optionsHtml(STATUS_OPTIONS, f.status === 'All' ? '' : f.status, { blank: 'All Statuses' })}</select>
+        <input type="date" id="rl-from" value="${f.dateFrom}" style="width:142px;">
+        <span class="u-muted" style="font-size:12px;">to</span>
+        <input type="date" id="rl-to" value="${f.dateTo}" style="width:142px;">
+        <select id="rl-priority" style="width:110px;"><option value="All">Priority</option>${optionsHtml(PRIORITY_OPTIONS, f.priority === 'All' ? '' : f.priority)}</select>
+        <div class="u-flex u-gap-8" style="margin-left:auto;align-items:center;">
+          ${!state.isAgent ? `<button class="icon-btn" id="rl-recycle" title="Recycle Bin (Admin/Super Admin)">${icon('trash')}</button>` : ''}
+          ${!state.isAgent ? `<button class="icon-btn" id="rl-import" title="Import from Excel">${icon('upload')}</button>` : ''}
+          <button class="icon-btn" id="rl-export" title="Export to Excel">${icon('download')}</button>
+          <button class="btn btn-primary btn-sm" id="rl-new">${icon('plus')}New Booking</button>
         </div>
-      </div>
-      <div class="table-toolbar" style="padding-top:0;justify-content:flex-end;">
-        ${!state.isAgent ? `<button class="icon-btn" id="rl-recycle" title="Recycle Bin (Admin/Super Admin)">${icon('trash')}</button>` : ''}
-        ${!state.isAgent ? `<button class="icon-btn" id="rl-import" title="Import from Excel">${icon('upload')}</button>` : ''}
-        <button class="icon-btn" id="rl-export" title="Export to Excel">${icon('download')}</button>
-        <button class="btn btn-primary btn-sm" id="rl-new">${icon('plus')}New Booking</button>
       </div>
       <div id="rl-table-slot">${loaderHtml()}</div>
     </div>
@@ -2141,11 +2242,7 @@ function wireRegisterListToolbar(registerKey) {
   fromInput.addEventListener('change', () => { f.dateFrom = fromInput.value; loadAndRenderRegisterRows(registerKey); });
   toInput.addEventListener('change', () => { f.dateTo = toInput.value; loadAndRenderRegisterRows(registerKey); });
   document.getElementById('rl-priority').addEventListener('change', (e) => { f.priority = e.target.value || 'All'; applyClientFiltersAndRender(registerKey); });
-  document.querySelectorAll('#rl-status-pills .pill').forEach(el => el.addEventListener('click', () => {
-    document.querySelectorAll('#rl-status-pills .pill').forEach(p => p.classList.remove('active'));
-    el.classList.add('active'); f.status = el.dataset.status;
-    applyClientFiltersAndRender(registerKey);
-  }));
+  document.getElementById('rl-status').addEventListener('change', (e) => { f.status = e.target.value || 'All'; applyClientFiltersAndRender(registerKey); });
   const recycleBtn = document.getElementById('rl-recycle');
   if (recycleBtn) recycleBtn.addEventListener('click', () => navigateTo('recycle-bin', { kind: registerKey }));
   const importBtn = document.getElementById('rl-import');
@@ -2187,7 +2284,7 @@ function registerRowHtml(reg, r) {
   const priClass = 'pr-' + (r.priority || 'Normal').toLowerCase();
   return `<tr>
     ${reg.listCols.map(c => `<td>${registerCellValue(reg, r, c.k)}</td>`).join('')}
-    <td><span class="badge ${statusClass}">${escapeHtml(r.status || 'Booked')}</span></td>
+    <td><select class="status-select ${statusClass}" data-quickstatus="${r.id}">${STATUS_OPTIONS.map(s => `<option value="${s}" ${s === (r.status || 'Booked') ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
     <td><span class="badge ${priClass}">${escapeHtml(r.priority || 'Normal')}</span></td>
     <td>${escapeHtml(r.bookedByName || '—')}</td>
     <td><div class="u-flex u-gap-8">
@@ -2223,6 +2320,22 @@ function renderRegisterTablePage(registerKey) {
     if (!ok) return;
     const row = rows.find(r => r.id === el.dataset.quickdel);
     try { await softDeleteBooking(registerKey, el.dataset.quickdel, row); toast('Moved to recycle bin.', 'success'); loadAndRenderRegisterRows(registerKey); } catch (err) { toast(err.message, 'error'); }
+  }));
+  slot.querySelectorAll('[data-quickstatus]').forEach(el => el.addEventListener('change', async () => {
+    const id = el.dataset.quickstatus;
+    const row = rows.find(r => r.id === id);
+    const oldStatus = row.status || 'Booked', newStatus = el.value;
+    if (oldStatus === newStatus) return;
+    el.className = 'status-select st-' + newStatus.toLowerCase(); // optimistic — updates the pill color immediately
+    el.disabled = true;
+    try {
+      await updateBookingStatusOnly(registerKey, id, row, newStatus);
+      row.status = newStatus;
+      toast(`${row.bookingId} marked ${newStatus}.`, 'success');
+    } catch (err) {
+      el.value = oldStatus; el.className = 'status-select st-' + oldStatus.toLowerCase();
+      toast(err.message || 'Could not update status.', 'error');
+    } finally { el.disabled = false; }
   }));
   const prev = document.getElementById('pg-prev'), next = document.getElementById('pg-next');
   if (prev) prev.addEventListener('click', () => { cache.page = Math.max(1, cache.page - 1); renderRegisterTablePage(registerKey); });
@@ -2584,7 +2697,7 @@ async function renderRegisterFormView(content, registerKey, id) {
           <div class="field-wrap"><label>Appointment Date <span class="req">*</span></label><input type="date" id="rf-date" value="${existing ? existing.appointmentDate : todayISO()}"></div>
           <div class="field-wrap"><label>Time Slot <span class="req">*</span></label><div class="search-select" id="rf-timeslot"></div></div>
           <div class="field-wrap"><label>Patient Name <span class="req">*</span></label><input type="text" id="rf-patient" value="${escapeHtml(existing ? existing.patientName : '')}"></div>
-          <div class="field-wrap"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="rf-mobile" value="${escapeHtml(existing ? existing.mobileNumber : '')}" placeholder="e.g. 01712345678"></div>
+          <div class="field-wrap"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="rf-mobile" value="${escapeHtml(existing ? existing.mobileNumber : '')}" placeholder="e.g. 9876543210"></div>
           <div class="field-wrap"><label>Priority</label><select id="rf-priority">${optionsHtml(PRIORITY_OPTIONS, existing ? existing.priority : 'Normal')}</select></div>
           <div class="field-wrap"><label>Booking Source <span class="req">*</span></label><select id="rf-source">${optionsHtml(state.settings.bookingSources, existing ? existing.source : '', { blank: '— Select —' })}</select></div>
           ${existing ? `<div class="field-wrap"><label>Status</label><select id="rf-status">${optionsHtml(STATUS_OPTIONS, existing.status)}</select></div>` : ''}
