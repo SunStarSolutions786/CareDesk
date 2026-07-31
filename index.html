@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CareDesk · Appointment Booking Register</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%230E7C7B%22/><path d=%22M28 20h44a6 6 0 0 1 6 6v46a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V26a6 6 0 0 1 6-6Z%22 fill=%22none%22 stroke=%22white%22 stroke-width=%226%22/><path d=%22M22 40h56M36 14v14M64 14v14%22 stroke=%22white%22 stroke-width=%226%22 stroke-linecap=%22round%22/><path d=%22M35 58l9 9 19-19%22 stroke=%22white%22 stroke-width=%227%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%230E7C7B%22/><path d=%22M18 50 L32 50 L40 26 L54 74 L62 40 L70 50 L82 50%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -397,8 +397,9 @@ td.id-cell{font-family:var(--font-mono);letter-spacing:0.3px;font-weight:600;}
 
 .status-select{
   appearance:none;-webkit-appearance:none;border:1.5px solid transparent;cursor:pointer;
-  font-size:11.5px;font-weight:700;padding:4px 22px 4px 10px;border-radius:99px;letter-spacing:0.2px;
-  background-repeat:no-repeat;background-position:right 7px center;background-size:9px;
+  font-size:11.5px;font-weight:700;padding:4px 24px 4px 10px;border-radius:99px;letter-spacing:0.2px;
+  background-repeat:no-repeat;background-position:right 8px center;background-size:9px;
+  min-width:128px;width:auto;white-space:nowrap;text-overflow:clip;
   background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");
   transition:opacity var(--transition);
 }
@@ -707,7 +708,7 @@ function getSecondaryAuth() {
    A background prefetch is kicked off after sign-in so they're
    usually already warm by the time Dashboard/Reports/Export are used.
    ============================================================ */
-const XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const XLSX_CDN = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js'; // SheetJS 0.18.5 + cell styling (colors/fonts) support
 const CHARTJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';
 const LOADED_SCRIPTS = {};
 function loadScriptOnce(src) {
@@ -1048,21 +1049,21 @@ function animateCountUp(el, end) {
 }
 
 /* ---------- Search-select (typeahead) component ---------- */
-function initSearchSelect(id, options, initialValue, onSelect, blankLabel) {
+function initSearchSelect(id, options, initialValue, onSelect, blankLabel, freeText) {
   const root = document.getElementById(id);
   if (!root) return null;
   let opts = options.slice();
   if (initialValue && !opts.some(o => o.value === initialValue)) opts = [{ value: initialValue, label: initialValue + ' (custom)' }].concat(opts);
   let value = initialValue || '';
-  function labelFor(v) { if (blankLabel !== undefined && v === blankLabel) return ''; const o = opts.find(x => x.value === v); return o ? o.label : ''; }
-  root.innerHTML = `<input type="text" class="ss-input" autocomplete="off" placeholder="${blankLabel !== undefined ? escapeHtml(blankLabel) : 'Type to search…'}" value="${escapeHtml(labelFor(value))}"><div class="ss-dropdown hidden"></div>`;
+  function labelFor(v) { if (blankLabel !== undefined && v === blankLabel) return ''; const o = opts.find(x => x.value === v); return o ? o.label : (freeText ? v : ''); }
+  root.innerHTML = `<input type="text" class="ss-input" autocomplete="off" placeholder="${blankLabel !== undefined ? escapeHtml(blankLabel) : 'Type to search…'}" value="${escapeHtml(labelFor(value))}"><div class="ss-dropdown hidden"></div>${freeText ? '<div class="hint" style="margin-top:4px;">Pick from the list, or type your own.</div>' : ''}`;
   const input = root.querySelector('.ss-input'), dropdown = root.querySelector('.ss-dropdown');
   let activeIndex = -1, visible = [];
   function renderList(term) {
     const t = (term || '').trim().toLowerCase();
     visible = t ? opts.filter(o => o.label.toLowerCase().includes(t)) : opts;
     activeIndex = -1;
-    dropdown.innerHTML = visible.length ? visible.slice(0, 60).map((o, i) => `<div class="ss-option" data-i="${i}">${escapeHtml(o.label)}</div>`).join('') : `<div class="ss-empty">No matches</div>`;
+    dropdown.innerHTML = visible.length ? visible.slice(0, 60).map((o, i) => `<div class="ss-option" data-i="${i}">${escapeHtml(o.label)}</div>`).join('') : `<div class="ss-empty">${freeText ? 'No matches — your typed text will be used' : 'No matches'}</div>`;
     dropdown.classList.remove('hidden');
     dropdown.querySelectorAll('.ss-option').forEach(el => el.addEventListener('mousedown', (e) => { e.preventDefault(); choose(visible[+el.dataset.i]); }));
   }
@@ -1084,11 +1085,20 @@ function initSearchSelect(id, options, initialValue, onSelect, blankLabel) {
     if (dropdown.classList.contains('hidden') && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { renderList(input.value); return; }
     if (e.key === 'ArrowDown') { e.preventDefault(); highlight(Math.min(activeIndex + 1, visible.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); highlight(Math.max(activeIndex - 1, 0)); }
-    else if (e.key === 'Enter') { if (activeIndex >= 0 && visible[activeIndex]) { e.preventDefault(); e.stopPropagation(); choose(visible[activeIndex]); } }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0 && visible[activeIndex]) { e.stopPropagation(); choose(visible[activeIndex]); }
+      else if (freeText && input.value.trim()) { e.stopPropagation(); value = input.value.trim(); dropdown.classList.add('hidden'); if (onSelect) onSelect(value, null); }
+    }
     else if (e.key === 'Escape') { dropdown.classList.add('hidden'); }
   });
   input.addEventListener('blur', () => {
-    setTimeout(() => { dropdown.classList.add('hidden'); input.value = labelFor(value); }, 150);
+    setTimeout(() => {
+      dropdown.classList.add('hidden');
+      const typed = input.value.trim();
+      if (freeText && typed && !opts.some(o => o.label === typed)) { value = typed; if (onSelect) onSelect(value, null); }
+      else { input.value = labelFor(value); }
+    }, 150);
   });
   return {
     getValue: () => value,
@@ -1227,7 +1237,7 @@ async function loadUserProfileAndBegin(fbUser) {
     // required in firestore.rules, so this is a friendliness net for the app, not a
     // replacement for fixing the stored value.
     const normalizedRole = String(u.role || '').trim().toLowerCase().replace(/\s+/g, '');
-    state.user = { uid: fbUser.uid, email: fbUser.email, name: u.name || fbUser.email, role: normalizedRole, clinicId: u.clinicId || null, permissions: u.permissions || {} };
+    state.user = { uid: fbUser.uid, email: fbUser.email, name: u.name || fbUser.email, role: normalizedRole, clinicId: u.clinicId || null, permissions: u.permissions || {}, visibilityDays: u.visibilityDays || null };
     state.isSuperAdmin = normalizedRole === ROLES.SUPERADMIN;
     state.isAdmin = normalizedRole === ROLES.ADMIN;
     state.isAgent = normalizedRole === ROLES.AGENT;
@@ -1648,21 +1658,24 @@ async function deleteClinicCascade(clinicId) {
 /* ============================================================
    DATA LAYER — USERS (agents & clinic admins)
    ============================================================ */
-async function createStaffAccount({ name, email, password, role, clinicId, permissions }) {
+async function createStaffAccount({ name, email, password, role, clinicId, permissions, visibilityDays }) {
   const sAuth = getSecondaryAuth();
   const cred = await createUserWithEmailAndPassword(sAuth, email, password);
   const uid = cred.user.uid;
-  await setDoc(doc(db, 'users', uid), {
+  const payload = {
     name, email, role, clinicId,
     permissions: permissions || {},
     deleted: false, createdAt: serverTimestamp(), createdBy: state.user.uid
-  });
+  };
+  if (visibilityDays) payload.visibilityDays = visibilityDays;
+  await setDoc(doc(db, 'users', uid), payload);
   await signOut(sAuth);
   return { uid };
 }
-async function updateStaffAccount(uid, { name, permissions }) {
+async function updateStaffAccount(uid, { name, permissions, visibilityDays }) {
   const payload = { name };
   if (permissions) payload.permissions = permissions;
+  payload.visibilityDays = visibilityDays || null;
   await updateDoc(doc(db, 'users', uid), payload);
 }
 async function softDeleteUser(uid) {
@@ -1787,27 +1800,30 @@ async function updateBooking(registerKey, id, data, oldData) {
   if (changes.length) await logBookingHistory(registerKey, id, 'updated', changes);
 }
 async function updateBookingStatusOnly(registerKey, id, oldRow, newStatus) {
+  const row = oldRow || await getBookingDoc(registerKey, id);
   const ref = doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id);
-  const newRow = Object.assign({}, oldRow, { status: newStatus });
+  const newRow = Object.assign({}, row, { status: newStatus });
   const batch = writeBatch(db);
   batch.update(ref, { status: newStatus, updatedAt: serverTimestamp(), updatedBy: state.user.uid, updatedByName: state.user.name });
-  stageBookingSummaryChange(batch, state.clinicId, registerKey, oldRow, newRow);
+  stageBookingSummaryChange(batch, state.clinicId, registerKey, row, newRow);
   await batch.commit();
-  await logBookingHistory(registerKey, id, 'updated', [{ field: 'status', label: 'Status', from: oldRow.status || 'Booked', to: newStatus }]);
+  await logBookingHistory(registerKey, id, 'updated', [{ field: 'status', label: 'Status', from: (row && row.status) || 'Booked', to: newStatus }]);
 }
 async function softDeleteBooking(registerKey, id, existingRow) {
+  const row = existingRow || await getBookingDoc(registerKey, id);
   const ref = doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id);
   const batch = writeBatch(db);
   batch.update(ref, { deleted: true, deletedAt: serverTimestamp(), deletedBy: state.user.uid, deletedByName: state.user.name });
-  if (existingRow) stageBookingSummaryChange(batch, state.clinicId, registerKey, existingRow, null);
+  if (row) stageBookingSummaryChange(batch, state.clinicId, registerKey, row, null);
   await batch.commit();
   await logBookingHistory(registerKey, id, 'deleted', null);
 }
 async function restoreBooking(registerKey, id, existingRow) {
+  const row = existingRow || await getBookingDoc(registerKey, id);
   const ref = doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id);
   const batch = writeBatch(db);
   batch.update(ref, { deleted: false, deletedAt: null, deletedBy: null, deletedByName: null });
-  if (existingRow) stageBookingSummaryChange(batch, state.clinicId, registerKey, null, existingRow);
+  if (row) stageBookingSummaryChange(batch, state.clinicId, registerKey, null, row);
   await batch.commit();
   await logBookingHistory(registerKey, id, 'restored', null);
 }
@@ -1934,6 +1950,8 @@ async function fetchRegisterRows(registerKey, { dateFrom, dateTo, searchTerm, in
     rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   }
   rows = rows.filter(r => (includeDeleted ? true : !r.deleted));
+  const earliest = earliestVisibleDate();
+  if (earliest) rows = rows.filter(r => !r.appointmentDate || r.appointmentDate >= earliest);
   rows.sort((a, b) => {
     const dc = (a.appointmentDate || '').localeCompare(b.appointmentDate || '');
     return dc !== 0 ? dc : timeSlotSortKey(a.timeSlot) - timeSlotSortKey(b.timeSlot);
@@ -2018,6 +2036,11 @@ function openCreateStaffModal(clinicId, role, onSuccess) {
         <div style="display:flex;flex-wrap:wrap;gap:14px;">
           ${REGISTER_KEYS.map(k => `<label class="checkbox-row"><input type="checkbox" class="cs-perm" value="${k}">${escapeHtml(REGISTERS[k].label)}</label>`).join('')}
         </div>
+        <div class="field-wrap" style="margin-top:14px;max-width:260px;">
+          <label>Data Visibility (days back)</label>
+          <input type="number" id="cs-vis" min="1" placeholder="Blank = unlimited">
+          <span class="hint">Limits how far back this agent can search/view past bookings. Leave blank for no limit.</span>
+        </div>
       ` : `<p class="hint" style="margin-top:10px;">Clinic admins get full access to every register, masters, reports and settings in this clinic.</p>`}
     </div>
     <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="cs-save">${icon('userPlus')}Create Account</button></div>
@@ -2033,10 +2056,11 @@ function openCreateStaffModal(clinicId, role, onSuccess) {
     if (password.length < 6) { toast('Password must be at least 6 characters.', 'error'); return; }
     const permissions = {};
     if (isAgent) document.querySelectorAll('.cs-perm:checked').forEach(el => { permissions[el.value] = true; });
+    const visibilityDays = isAgent ? (toNum(document.getElementById('cs-vis').value) || null) : null;
     const btn = document.getElementById('cs-save');
     setBtnLoading(btn, true, 'Creating…');
     try {
-      await createStaffAccount({ name, email, password, role, clinicId, permissions });
+      await createStaffAccount({ name, email, password, role, clinicId, permissions, visibilityDays });
       closeModal();
       toast(`${isAgent ? 'Agent' : 'Admin'} account created.`, 'success');
       if (onSuccess) onSuccess(); else if (state.view === 'users') navigateTo('users', { forceRefresh: true });
@@ -2056,6 +2080,11 @@ async function openEditAgentModal(uid) {
       <div style="display:flex;flex-wrap:wrap;gap:14px;">
         ${REGISTER_KEYS.map(k => `<label class="checkbox-row"><input type="checkbox" class="ea-perm" value="${k}" ${a.permissions && a.permissions[k] ? 'checked' : ''}>${escapeHtml(REGISTERS[k].label)}</label>`).join('')}
       </div>
+      <div class="field-wrap" style="margin-top:14px;max-width:260px;">
+        <label>Data Visibility (days back)</label>
+        <input type="number" id="ea-vis" min="1" value="${a.visibilityDays || ''}" placeholder="Blank = unlimited">
+        <span class="hint">Limits how far back this agent can search/view past bookings. Leave blank for no limit.</span>
+      </div>
     </div>
     <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="ea-save">Save Changes</button></div>
   `);
@@ -2066,9 +2095,10 @@ async function openEditAgentModal(uid) {
     if (!name) { toast('Name is required.', 'error'); return; }
     const permissions = {};
     document.querySelectorAll('.ea-perm:checked').forEach(el => { permissions[el.value] = true; });
+    const visibilityDays = toNum(document.getElementById('ea-vis').value) || null;
     const btn = document.getElementById('ea-save');
     setBtnLoading(btn, true, 'Saving…');
-    try { await updateStaffAccount(uid, { name, permissions }); closeModal(); toast('Agent updated.', 'success'); navigateTo('users', { forceRefresh: true }); }
+    try { await updateStaffAccount(uid, { name, permissions, visibilityDays }); closeModal(); toast('Agent updated.', 'success'); navigateTo('users', { forceRefresh: true }); }
     catch (err) { setBtnLoading(btn, false); toast(mapAuthError(err), 'error'); }
   });
 }
@@ -2200,7 +2230,15 @@ function recycleRowHtml(r, kind, isUsers) {
    BOOKING REGISTER — shared list engine (used by all 4 registers)
    ============================================================ */
 const PAGE_SIZE = 25;
-function defaultRegisterFilters() { return { dateFrom: todayISO(), dateTo: todayISO(), status: 'Booked', priority: 'All', search: '' }; }
+function earliestVisibleDate() {
+  if (!state.isAgent || !state.user.visibilityDays) return null;
+  return addDaysISO(todayISO(), -Math.abs(state.user.visibilityDays));
+}
+function defaultRegisterFilters() {
+  const earliest = earliestVisibleDate();
+  const wantedFrom = todayISO();
+  return { dateFrom: (earliest && earliest > wantedFrom) ? earliest : wantedFrom, dateTo: todayISO(), status: 'Booked', priority: 'All', search: '' };
+}
 function loaderHtml() { return `<div class="u-center" style="padding:60px 0;"><span class="loader-ring"></span></div>`; }
 
 async function renderRegisterListView(content, registerKey) {
@@ -2213,7 +2251,7 @@ async function renderRegisterListView(content, registerKey) {
       <div class="table-toolbar">
         <div class="search-box">${icon('search')}<input type="text" id="rl-search" placeholder="Booking ID, patient or mobile…" value="${escapeHtml(f.search)}"></div>
         <select id="rl-status" style="width:128px;">${optionsHtml(STATUS_OPTIONS, f.status === 'All' ? '' : f.status, { blank: 'All Statuses' })}</select>
-        <input type="date" id="rl-from" value="${f.dateFrom}" style="width:142px;">
+        <input type="date" id="rl-from" value="${f.dateFrom}" ${earliestVisibleDate() ? `min="${earliestVisibleDate()}"` : ''} style="width:142px;">
         <span class="u-muted" style="font-size:12px;">to</span>
         <input type="date" id="rl-to" value="${f.dateTo}" style="width:142px;">
         <select id="rl-priority" style="width:110px;"><option value="All">Priority</option>${optionsHtml(PRIORITY_OPTIONS, f.priority === 'All' ? '' : f.priority)}</select>
@@ -2323,15 +2361,25 @@ function renderRegisterTablePage(registerKey) {
   }));
   slot.querySelectorAll('[data-quickstatus]').forEach(el => el.addEventListener('change', async () => {
     const id = el.dataset.quickstatus;
-    const row = rows.find(r => r.id === id);
-    const oldStatus = row.status || 'Booked', newStatus = el.value;
+    let row = rows.find(r => r.id === id);
+    const oldStatus = (row && row.status) || 'Booked', newStatus = el.value;
     if (oldStatus === newStatus) return;
+    if (newStatus === 'Rescheduled') {
+      el.disabled = true;
+      if (!row) row = await getBookingDoc(registerKey, id);
+      openRescheduleModal(registerKey, row, (didReschedule) => {
+        el.disabled = false;
+        if (didReschedule) { row.status = 'Rescheduled'; el.className = 'status-select st-rescheduled'; el.value = 'Rescheduled'; loadAndRenderRegisterRows(registerKey); }
+        else { el.value = oldStatus; }
+      });
+      return;
+    }
     el.className = 'status-select st-' + newStatus.toLowerCase(); // optimistic — updates the pill color immediately
     el.disabled = true;
     try {
       await updateBookingStatusOnly(registerKey, id, row, newStatus);
-      row.status = newStatus;
-      toast(`${row.bookingId} marked ${newStatus}.`, 'success');
+      if (row) row.status = newStatus;
+      toast(`${(row && row.bookingId) || id} marked ${newStatus}.`, 'success');
     } catch (err) {
       el.value = oldStatus; el.className = 'status-select st-' + oldStatus.toLowerCase();
       toast(err.message || 'Could not update status.', 'error');
@@ -2543,19 +2591,65 @@ function openMasterImportModal(kind) {
   });
 }
 
+/* ---------- Shared styled-sheet builder for both register & report exports ---------- */
+const STATUS_XLSX_COLORS = {
+  Booked: { bg: 'DCE9FC', font: '1D5FBF' },
+  Completed: { bg: 'DEF3E8', font: '178A56' },
+  Cancelled: { bg: 'FBE0E0', font: 'C41F1F' },
+  Rescheduled: { bg: 'FBEAD4', font: 'B5620D' }
+};
+const PRIORITY_XLSX_COLORS = { Urgent: { bg: 'FBEAD4', font: 'B5620D' }, VIP: { bg: 'EDE7F9', font: '6D4AAE' } };
+function tsToJsDateOrBlank(input) {
+  if (!input) return '';
+  if (typeof input.toDate === 'function') { const d = input.toDate(); return isNaN(d) ? '' : d; }
+  const d = new Date(input);
+  return isNaN(d) ? '' : d;
+}
+function buildStyledBookingSheet(reg, rows) {
+  const headerCols = reg.listCols.map(c => c.h).concat(['Status', 'Priority', 'Source', 'Remarks', 'Booked By', 'Booked On']);
+  const dateColIdx = reg.listCols.findIndex(c => c.k === 'appointmentDate');
+  const statusColIdx = reg.listCols.length;
+  const priorityColIdx = reg.listCols.length + 1;
+  const bookedOnColIdx = reg.listCols.length + 5;
+
+  const aoa = [headerCols];
+  rows.forEach((r) => {
+    const rowArr = reg.listCols.map((c) => {
+      if (c.k === 'appointmentDate') return r.appointmentDate ? new Date(r.appointmentDate + 'T00:00:00') : '';
+      if (c.k === 'testsSummary') return (r.requestedTests || []).join(', ');
+      return r[c.k] || '';
+    }).concat([r.status || 'Booked', r.priority || 'Normal', r.source || '', r.remarks || '', r.bookedByName || '', tsToJsDateOrBlank(r.bookedOn)]);
+    aoa.push(rowArr);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = headerCols.map((h, i) => ({ wch: Math.max(h.length + 3, i === 0 ? 13 : 14) }));
+  try { ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: headerCols.length - 1 } }) }; } catch (e) { /* non-critical */ }
+
+  // Header row: bold white text on teal
+  for (let c = 0; c < headerCols.length; c++) {
+    const addr = XLSX.utils.encode_cell({ r: 0, c });
+    if (ws[addr]) ws[addr].s = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '0E7C7B' } }, alignment: { vertical: 'center' } };
+  }
+  // Per-row: real date formats + status/priority colour coding, matching the app's own badge colors
+  for (let r = 1; r <= rows.length; r++) {
+    const rowData = rows[r - 1];
+    if (dateColIdx >= 0) { const addr = XLSX.utils.encode_cell({ r, c: dateColIdx }); if (ws[addr] && ws[addr].v) ws[addr].z = 'dd-mmm-yyyy'; }
+    const bAddr = XLSX.utils.encode_cell({ r, c: bookedOnColIdx }); if (ws[bAddr] && ws[bAddr].v) ws[bAddr].z = 'dd-mmm-yyyy hh:mm AM/PM';
+    const sc = STATUS_XLSX_COLORS[rowData.status || 'Booked'];
+    if (sc) { const addr = XLSX.utils.encode_cell({ r, c: statusColIdx }); if (ws[addr]) ws[addr].s = { font: { bold: true, color: { rgb: sc.font } }, fill: { fgColor: { rgb: sc.bg } }, alignment: { horizontal: 'center' } }; }
+    const pc = PRIORITY_XLSX_COLORS[rowData.priority];
+    if (pc) { const addr = XLSX.utils.encode_cell({ r, c: priorityColIdx }); if (ws[addr]) ws[addr].s = { font: { bold: true, color: { rgb: pc.font } }, fill: { fgColor: { rgb: pc.bg } }, alignment: { horizontal: 'center' } }; }
+  }
+  return ws;
+}
 async function exportRegisterToExcel(registerKey) {
   const reg = REGISTERS[registerKey];
   const cache = state.registerCache[registerKey];
   const rows = cache.allRows || [];
   if (!rows.length) { toast('Nothing to export.', 'error'); return; }
   try { await loadScriptOnce(XLSX_CDN); } catch (err) { toast(err.message, 'error'); return; }
-  const header = reg.listCols.map(c => c.h).concat(['Status', 'Priority', 'Source', 'Remarks', 'Booked By', 'Booked On']);
-  const body = rows.map(r => reg.listCols.map(c => {
-    if (c.k === 'appointmentDate') return formatDateHuman(r.appointmentDate);
-    if (c.k === 'testsSummary') return (r.requestedTests || []).join(', ');
-    return r[c.k] || '';
-  }).concat([r.status || '', r.priority || '', r.source || '', r.remarks || '', r.bookedByName || '', formatDateTimeHuman(r.bookedOn)]));
-  const ws = XLSX.utils.aoa_to_sheet([header].concat(body));
+  const ws = buildStyledBookingSheet(reg, rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, reg.short.slice(0, 28));
   XLSX.writeFile(wb, `${reg.short.replace(/\s+/g, '_')}_Bookings_${todayISO()}.xlsx`);
@@ -2674,6 +2768,56 @@ async function openBookingHistoryModal(registerKey, bookingDocId, bookingIdLabel
     document.getElementById('bh-body').innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load history</h4></div>`;
   }
 }
+/* ---------- Reschedule: keep the old entry on its original date, spin off a new Booked one ---------- */
+async function openRescheduleModal(registerKey, oldRow, onDone) {
+  if (!oldRow) { toast('Could not load this booking.', 'error'); onDone(false); return; }
+  const reg = REGISTERS[registerKey];
+  openModal(`
+    <div class="modal-head"><h3>Reschedule ${escapeHtml(oldRow.bookingId)}</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:16px;"><b>${escapeHtml(oldRow.bookingId)}</b> stays on ${escapeHtml(formatDateHuman(oldRow.appointmentDate))} marked Rescheduled. A new Booked entry is created for the new date below.</p>
+      <div class="form-grid">
+        <div class="field-wrap"><label>New Appointment Date <span class="req">*</span></label><input type="date" id="rs-date" value="${oldRow.appointmentDate}"></div>
+        <div class="field-wrap"><label>New Time Slot <span class="req">*</span></label><div class="search-select" id="rs-timeslot"></div></div>
+      </div>
+      <div class="field-wrap" style="margin-top:14px;"><label>Remarks</label><textarea id="rs-remarks">${escapeHtml(oldRow.remarks || '')}</textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="m-cancel">Cancel</button><button class="btn btn-primary" id="rs-save">${icon('check')}Reschedule</button></div>
+  `);
+  const cancel = () => { closeModal(); onDone(false); };
+  document.getElementById('m-x').addEventListener('click', cancel);
+  document.getElementById('m-cancel').addEventListener('click', cancel);
+  const slots = generateTimeSlots(reg.slotKey);
+  const tsCtrl = initSearchSelect('rs-timeslot', slots.map(s => ({ value: s, label: s })), oldRow.timeSlot || '', null, 'Search or type a time…', true);
+  document.getElementById('rs-save').addEventListener('click', async () => {
+    const newDate = document.getElementById('rs-date').value;
+    const newTimeSlot = tsCtrl.getValue();
+    const newRemarks = document.getElementById('rs-remarks').value.trim();
+    if (!newDate) { toast('Pick the new appointment date.', 'error'); return; }
+    if (!newTimeSlot) { toast('Pick or type the new time slot.', 'error'); return; }
+    const btn = document.getElementById('rs-save');
+    setBtnLoading(btn, true, 'Rescheduling…');
+    try {
+      await updateBookingStatusOnly(registerKey, oldRow.id, oldRow, 'Rescheduled');
+      const newData = {
+        appointmentDate: newDate, timeSlot: newTimeSlot, patientName: oldRow.patientName, mobileNumber: oldRow.mobileNumber,
+        priority: oldRow.priority || 'Normal', source: oldRow.source, status: 'Booked', remarks: newRemarks
+      };
+      if (reg.key === 'doctor' || reg.key === 'dental') {
+        newData.doctorName = oldRow.doctorName; newData.specialty = oldRow.specialty;
+        if (reg.key === 'dental') newData.treatmentType = oldRow.treatmentType;
+      }
+      if (reg.key === 'test' || reg.key === 'homeCollection') {
+        newData.requestedTests = oldRow.requestedTests || [];
+        if (reg.key === 'homeCollection') { newData.address = oldRow.address; newData.area = oldRow.area; newData.pin = oldRow.pin; }
+      }
+      const created = await createBooking(registerKey, newData);
+      closeModal();
+      toast(`Rescheduled — new booking ${created.bookingId} created for ${formatDateHuman(newDate)}.`, 'success');
+      onDone(true);
+    } catch (err) { setBtnLoading(btn, false); toast(err.message || 'Reschedule failed.', 'error'); }
+  });
+}
 async function renderRegisterFormView(content, registerKey, id) {
   const reg = REGISTERS[registerKey];
   let existing = null;
@@ -2712,7 +2856,7 @@ async function renderRegisterFormView(content, registerKey, id) {
       </div>
     </div>
   `;
-  const timeSlotCtrl = initSearchSelect('rf-timeslot', slots.map(s => ({ value: s, label: s })), existing ? existing.timeSlot : '', null, 'Search time…');
+  const timeSlotCtrl = initSearchSelect('rf-timeslot', slots.map(s => ({ value: s, label: s })), existing ? existing.timeSlot : '', null, 'Search or type a time…', true);
   document.getElementById('rf-timeslot')._ssController = timeSlotCtrl;
   registerExtraFieldsInit(reg, existing);
   document.getElementById('rf-back').addEventListener('click', () => navigateTo(registerKey));
@@ -2852,17 +2996,10 @@ async function exportReportToExcel(registerKey, tab, dateFrom, dateTo) {
   if (!reportRowsCache.length) { toast('Nothing to export.', 'error'); return; }
   try { await loadScriptOnce(XLSX_CDN); } catch (err) { toast(err.message, 'error'); return; }
   const reg = REGISTERS[registerKey];
-  const header = reg.listCols.map(c => c.h).concat(['Status', 'Priority', 'Source', 'Remarks', 'Booked By', 'Booked On']);
-  const body = reportRowsCache.map(r => reg.listCols.map(c => registerCellValueRaw(reg, r, c.k)).concat([r.status || '', r.priority || '', r.source || '', r.remarks || '', r.bookedByName || '', formatDateTimeHuman(r.bookedOn)]));
-  const ws = XLSX.utils.aoa_to_sheet([header].concat(body));
+  const ws = buildStyledBookingSheet(reg, reportRowsCache);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, reg.short.slice(0, 28));
   XLSX.writeFile(wb, `${reg.short.replace(/\s+/g, '_')}_Report_${dateFrom}_to_${dateTo}.xlsx`);
-}
-function registerCellValueRaw(reg, r, key) {
-  if (key === 'appointmentDate') return formatDateHuman(r.appointmentDate);
-  if (key === 'testsSummary') return (r.requestedTests || []).join(', ');
-  return r[key] || '';
 }
 
 /* ============================================================
@@ -2882,7 +3019,7 @@ function registersVisibleToCurrentUser() {
 async function getDashboardData() {
   const registersToShow = registersVisibleToCurrentUser();
   const today = todayISO();
-  const weekEnd = addDaysISO(today, 6);
+  const weekEnd = addDaysISO(today, 7); // fetch through +7 so "next 7 days" (tomorrow..+7) is a full week excluding today
   const perRegister = {};
   const [summary] = await Promise.all([
     getDashboardSummary(state.clinicId),
@@ -2913,12 +3050,13 @@ async function renderDashboardView(content) {
   try { data = await getDashboardData(); } catch (err) { content.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load dashboard</h4></div>`; return; }
   const { registersToShow, perRegister, today, summary } = data;
   const allTimeTotal = registersToShow.reduce((sum, k) => sum + (summary[`${k}_total`] || 0), 0);
-  const todayRows = {}; let todayTotal = 0, weekTotal = 0;
+  const todayRows = {}, next7Rows = {}; let todayTotal = 0, weekTotal = 0;
   const statusToday = {}; STATUS_OPTIONS.forEach(s => statusToday[s] = 0);
   registersToShow.forEach(k => {
     todayRows[k] = perRegister[k].filter(r => r.appointmentDate === today);
+    next7Rows[k] = perRegister[k].filter(r => r.appointmentDate > today);
     todayTotal += todayRows[k].length;
-    weekTotal += perRegister[k].length;
+    weekTotal += next7Rows[k].length;
     todayRows[k].forEach(r => { const s = r.status || 'Booked'; statusToday[s] = (statusToday[s] || 0) + 1; });
   });
   let recent = [];
@@ -2929,14 +3067,14 @@ async function renderDashboardView(content) {
   content.innerHTML = `
     <div class="stat-grid">
       <div class="stat-card accent-ink"><span class="lbl"><span class="stat-icon-badge badge-ink">${icon('calendar')}</span>Today's Bookings</span><div class="val" id="dk-today">0</div></div>
-      <div class="stat-card accent-teal"><span class="lbl"><span class="stat-icon-badge badge-teal">${icon('barChart')}</span>Next 7 Days</span><div class="val" id="dk-week">0</div></div>
       <div class="stat-card accent-green"><span class="lbl"><span class="stat-icon-badge badge-green">${icon('check')}</span>Completed Today</span><div class="val c-green" id="dk-completed">0</div></div>
       <div class="stat-card accent-red"><span class="lbl"><span class="stat-icon-badge badge-red">${icon('x')}</span>Cancelled Today</span><div class="val" id="dk-cancelled">0</div></div>
+      <div class="stat-card accent-teal"><span class="lbl"><span class="stat-icon-badge badge-teal">${icon('barChart')}</span>Next 7 Days</span><div class="val" id="dk-week">0</div></div>
       <div class="stat-card accent-violet"><span class="lbl"><span class="stat-icon-badge badge-violet">${icon('star')}</span>All-Time Bookings</span><div class="val" id="dk-alltime">0</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:20px;" id="dk-chart-grid">
-      <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Register</h3><canvas id="dk-register-chart" height="200"></canvas></div>
-      <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Status</h3><canvas id="dk-status-chart" height="200"></canvas></div>
+      <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Register</h3><div style="position:relative;height:230px;"><canvas id="dk-register-chart"></canvas></div></div>
+      <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Status</h3><div style="position:relative;height:230px;"><canvas id="dk-status-chart"></canvas></div></div>
     </div>
     <div class="card" style="margin-bottom:20px;">
       <div class="card-head"><h3>Recent Activity</h3><span class="u-muted" style="font-size:12px;">Today, most recent first</span></div>
@@ -2956,29 +3094,38 @@ async function renderDashboardView(content) {
   animateCountUp(document.getElementById('dk-cancelled'), statusToday.Cancelled || 0);
   animateCountUp(document.getElementById('dk-alltime'), allTimeTotal);
 
-  if (dashRegisterChart) { dashRegisterChart.destroy(); dashRegisterChart = null; }
-  if (dashStatusChart) { dashStatusChart.destroy(); dashStatusChart = null; }
-  try { await loadScriptOnce(CHARTJS_CDN); } catch (err) { return; }
-  if (!document.body.contains(content)) return; // navigated away while the chart library was loading
-  const regCtx = document.getElementById('dk-register-chart');
-  if (regCtx && window.Chart) {
-    const accentHex = { teal: '#14948F', blue: '#2E77E0', amber: '#DE7F1E', violet: '#8562C7' };
-    dashRegisterChart = new Chart(regCtx, {
-      type: 'bar',
-      data: { labels: registersToShow.map(k => REGISTERS[k].short), datasets: [{ data: registersToShow.map(k => todayRows[k].length), backgroundColor: registersToShow.map(k => accentHex[REGISTERS[k].accent] || '#14948F'), borderRadius: 8, maxBarThickness: 46 }] },
-      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, animation: { duration: 700 } }
-    });
-  }
-  const stCtx = document.getElementById('dk-status-chart');
-  if (stCtx && window.Chart) {
-    dashStatusChart = new Chart(stCtx, {
-      type: 'doughnut',
-      data: { labels: STATUS_OPTIONS, datasets: [{ data: STATUS_OPTIONS.map(s => statusToday[s]), backgroundColor: ['#2E77E0', '#1FAA6D', '#DC2626', '#DE7F1E'], borderWidth: 0 }] },
-      options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11.5 }, padding: 12 } } }, cutout: '65%', animation: { animateScale: true, duration: 700 } }
-    });
-  }
+  // Wire every interactive element FIRST, before touching charts — a chart failing to
+  // render (e.g. the library failing to load) must never be able to leave Quick Add or
+  // Recent Activity unresponsive.
   content.querySelectorAll('[data-goto]').forEach(el => el.addEventListener('click', () => { const [rk, id] = el.dataset.goto.split('|'); navigateTo('register-form', { registerKey: rk, id }); }));
   content.querySelectorAll('[data-quickadd]').forEach(el => el.addEventListener('click', () => navigateTo('register-form', { registerKey: el.dataset.quickadd, id: null })));
+
+  if (dashRegisterChart) { dashRegisterChart.destroy(); dashRegisterChart = null; }
+  if (dashStatusChart) { dashStatusChart.destroy(); dashStatusChart = null; }
+  try {
+    await loadScriptOnce(CHARTJS_CDN);
+    if (!document.body.contains(content)) return; // navigated away while the chart library was loading
+    const regCtx = document.getElementById('dk-register-chart');
+    if (regCtx && window.Chart) {
+      const accentHex = { teal: '#14948F', blue: '#2E77E0', amber: '#DE7F1E', violet: '#8562C7' };
+      dashRegisterChart = new Chart(regCtx, {
+        type: 'bar',
+        data: { labels: registersToShow.map(k => REGISTERS[k].short), datasets: [{ data: registersToShow.map(k => todayRows[k].length), backgroundColor: registersToShow.map(k => accentHex[REGISTERS[k].accent] || '#14948F'), borderRadius: 8, maxBarThickness: 46 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, animation: { duration: 700 } }
+      });
+    }
+  } catch (err) { console.warn('Register chart could not render:', err); }
+  try {
+    if (!document.body.contains(content)) return;
+    const stCtx = document.getElementById('dk-status-chart');
+    if (stCtx && window.Chart) {
+      dashStatusChart = new Chart(stCtx, {
+        type: 'doughnut',
+        data: { labels: STATUS_OPTIONS, datasets: [{ data: STATUS_OPTIONS.map(s => statusToday[s]), backgroundColor: ['#2E77E0', '#1FAA6D', '#DC2626', '#DE7F1E'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11.5 }, padding: 12 } } }, cutout: '65%', animation: { animateScale: true, duration: 700 } }
+      });
+    }
+  } catch (err) { console.warn('Status chart could not render:', err); }
 }
 
 /* ============================================================
