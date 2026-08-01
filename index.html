@@ -1744,9 +1744,18 @@ async function nextBookingId(registerKey) {
    below is the full-recompute safety net for the rarer edge cases (e.g. data edited directly in
    the Firebase console) — cheap to run on demand from Settings, not needed for normal use. */
 function stageBookingSummaryChange(batch, clinicId, registerKey, oldRow, newRow) {
-  const dsPatch = {};
-  function bumpDs(row, mult) { if (!row) return; const s = row.status || 'Booked'; dsPatch[`${registerKey}_total`] = increment(mult); dsPatch[`${registerKey}_${s}`] = increment(mult); }
+  // Accumulate as plain numeric deltas first, THEN convert to increment() sentinels — this
+  // mirrors the monthDeltas pattern just below. Writing increment() directly per bumpDs()
+  // call was the bug: an edit calls bumpDs twice (old row -1, new row +1) against the SAME
+  // dsPatch key, and a plain object-property assignment overwrites rather than adds, so only
+  // the second increment() ever survived. Every save of an existing booking was silently
+  // adding +1 to that register's total (and to the status count too, whenever the status
+  // didn't change) even though no booking was actually added.
+  const dsDeltas = {};
+  function bumpDs(row, mult) { if (!row) return; const s = row.status || 'Booked'; dsDeltas[`${registerKey}_total`] = (dsDeltas[`${registerKey}_total`] || 0) + mult; dsDeltas[`${registerKey}_${s}`] = (dsDeltas[`${registerKey}_${s}`] || 0) + mult; }
   bumpDs(oldRow, -1); bumpDs(newRow, 1);
+  const dsPatch = {};
+  Object.keys(dsDeltas).forEach((k) => { if (dsDeltas[k]) dsPatch[k] = increment(dsDeltas[k]); });
   if (Object.keys(dsPatch).length) { dsPatch.updatedAt = serverTimestamp(); batch.set(doc(db, 'clinics', clinicId, 'meta', 'dashboardSummary'), dsPatch, { merge: true }); }
 
   const monthDeltas = {}; // monthKey -> { total, [status]: n }
@@ -1765,7 +1774,7 @@ function stageBookingSummaryChange(batch, clinicId, registerKey, oldRow, newRow)
     if (Object.keys(patch).length > 3) batch.set(doc(db, 'clinics', clinicId, 'monthlySummaries', `${registerKey}_${mk}`), patch, { merge: true });
   });
 }
-async function createBooking(registerKey, data) {
+async function createBooking(registerKey, data, historyRelated) {
   const bookingId = await nextBookingId(registerKey);
   const payload = Object.assign({}, data, {
     bookingId,
@@ -1781,7 +1790,7 @@ async function createBooking(registerKey, data) {
   batch.set(ref, payload);
   stageBookingSummaryChange(batch, state.clinicId, registerKey, null, data);
   await batch.commit();
-  await logBookingHistory(registerKey, ref.id, 'created', null);
+  await logBookingHistory(registerKey, ref.id, 'created', null, historyRelated);
   return { id: ref.id, bookingId };
 }
 async function updateBooking(registerKey, id, data, oldData) {
@@ -1799,7 +1808,7 @@ async function updateBooking(registerKey, id, data, oldData) {
   const changes = diffBookingFields(oldData, data);
   if (changes.length) await logBookingHistory(registerKey, id, 'updated', changes);
 }
-async function updateBookingStatusOnly(registerKey, id, oldRow, newStatus) {
+async function updateBookingStatusOnly(registerKey, id, oldRow, newStatus, related) {
   const row = oldRow || await getBookingDoc(registerKey, id);
   const ref = doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id);
   const newRow = Object.assign({}, row, { status: newStatus });
@@ -1807,7 +1816,7 @@ async function updateBookingStatusOnly(registerKey, id, oldRow, newStatus) {
   batch.update(ref, { status: newStatus, updatedAt: serverTimestamp(), updatedBy: state.user.uid, updatedByName: state.user.name });
   stageBookingSummaryChange(batch, state.clinicId, registerKey, row, newRow);
   await batch.commit();
-  await logBookingHistory(registerKey, id, 'updated', [{ field: 'status', label: 'Status', from: (row && row.status) || 'Booked', to: newStatus }]);
+  await logBookingHistory(registerKey, id, 'updated', [{ field: 'status', label: 'Status', from: (row && row.status) || 'Booked', to: newStatus }], related);
 }
 async function softDeleteBooking(registerKey, id, existingRow) {
   const row = existingRow || await getBookingDoc(registerKey, id);
@@ -1855,11 +1864,11 @@ function diffBookingFields(oldData, newData) {
   });
   return changes;
 }
-async function logBookingHistory(registerKey, bookingDocId, action, changes) {
+async function logBookingHistory(registerKey, bookingDocId, action, changes, related) {
   try {
-    await addDoc(collection(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, bookingDocId, 'history'), {
-      action, changes: changes || null, by: state.user.uid, byName: state.user.name, at: serverTimestamp()
-    });
+    const entry = { action, changes: changes || null, by: state.user.uid, byName: state.user.name, at: serverTimestamp() };
+    if (related) entry.related = related; // { bookingDocId, bookingId } — the other half of a reschedule pair
+    await addDoc(collection(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, bookingDocId, 'history'), entry);
   } catch (err) { console.error('History log failed:', err); }
 }
 async function fetchBookingHistory(registerKey, bookingDocId) {
@@ -2307,6 +2316,9 @@ function applyClientFiltersAndRender(registerKey) {
   let rows = cache.rawRows || [];
   if (f.status !== 'All') rows = rows.filter(r => r.status === f.status);
   if (f.priority && f.priority !== 'All') rows = rows.filter(r => (r.priority || 'Normal') === f.priority);
+  // Newest-entered booking first, regardless of its own appointment date/time, so the last
+  // thing added is always visible at the top without paging or scrolling to find it.
+  rows = rows.slice().sort((a, b) => tsToMillis(b.bookedOn) - tsToMillis(a.bookedOn));
   cache.allRows = rows;
   cache.page = 1;
   renderRegisterTablePage(registerKey);
@@ -2327,6 +2339,7 @@ function registerRowHtml(reg, r) {
     <td>${escapeHtml(r.bookedByName || '—')}</td>
     <td><div class="u-flex u-gap-8">
       <button class="icon-btn" data-open="${r.id}" title="Open">${icon('edit')}</button>
+      <button class="icon-btn" data-history="${r.id}" data-bid="${escapeHtml(r.bookingId)}" title="History">${icon('clock')}</button>
       <button class="icon-btn danger" data-quickdel="${r.id}" data-bid="${escapeHtml(r.bookingId)}" title="Delete">${icon('trash')}</button>
     </div></td>
   </tr>`;
@@ -2353,6 +2366,7 @@ function renderRegisterTablePage(registerKey) {
   slot.innerHTML = `<table><thead><tr>${reg.listCols.map(c => `<th>${c.h}</th>`).join('')}<th>Status</th><th>Priority</th><th>Booked By</th><th></th></tr></thead><tbody>${pageRows.map(r => registerRowHtml(reg, r)).join('')}</tbody></table>`;
   document.getElementById('rl-pagination').innerHTML = paginationHtml(cache.page, totalPages, rows.length);
   slot.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => navigateTo('register-form', { registerKey, id: el.dataset.open })));
+  slot.querySelectorAll('[data-history]').forEach(el => el.addEventListener('click', () => openBookingHistoryModal(registerKey, el.dataset.history, el.dataset.bid)));
   slot.querySelectorAll('[data-quickdel]').forEach(el => el.addEventListener('click', async () => {
     const ok = await confirmDialog({ title: 'Delete booking?', danger: true, confirmLabel: 'Move to Recycle Bin', message: `Booking <b>${escapeHtml(el.dataset.bid)}</b> will be moved to the recycle bin.` });
     if (!ok) return;
@@ -2742,14 +2756,16 @@ const HISTORY_ACTION_META = {
   deleted: { label: 'Moved to recycle bin', icon: 'trash' },
   restored: { label: 'Restored from recycle bin', icon: 'restore' }
 };
-function historyEntryHtml(h) {
+function historyEntryHtml(h, registerKey) {
   const meta = HISTORY_ACTION_META[h.action] || { label: h.action, icon: 'info' };
+  const relatedHtml = h.related ? `<button type="button" class="btn btn-ghost btn-sm" data-goto-related="${registerKey}|${h.related.bookingDocId}" style="margin-top:8px;padding:4px 10px;font-size:11.5px;">${icon('chevronRight')}${h.action === 'created' ? 'Rescheduled from' : 'Rescheduled to'} ${escapeHtml(h.related.bookingId)}</button>` : '';
   return `<div style="display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--line-100);">
     <div class="form-section-icon" style="flex-shrink:0;">${icon(meta.icon)}</div>
     <div style="flex:1;min-width:0;">
       <div style="font-weight:600;font-size:13.5px;">${escapeHtml(meta.label)}</div>
       <div class="u-muted" style="font-size:12px;margin-bottom:${h.changes && h.changes.length ? '8px' : '0'};">${escapeHtml(h.byName || '—')} · ${formatDateTimeHuman(h.at)}</div>
       ${h.changes && h.changes.length ? `<div style="font-size:12.5px;display:flex;flex-direction:column;gap:3px;">${h.changes.map(c => `<div><b>${escapeHtml(c.label)}</b> — ${escapeHtml(c.from)} <span style="color:var(--slate-400);">→</span> ${escapeHtml(c.to)}</div>`).join('')}</div>` : ''}
+      ${relatedHtml}
     </div>
   </div>`;
 }
@@ -2763,7 +2779,13 @@ async function openBookingHistoryModal(registerKey, bookingDocId, bookingIdLabel
   document.getElementById('m-cancel').addEventListener('click', closeModal);
   try {
     const rows = await fetchBookingHistory(registerKey, bookingDocId);
-    document.getElementById('bh-body').innerHTML = rows.length ? rows.map(historyEntryHtml).join('') : `<div class="empty-state">${icon('info')}<h4>No history yet</h4></div>`;
+    const body = document.getElementById('bh-body');
+    body.innerHTML = rows.length ? rows.map(h => historyEntryHtml(h, registerKey)).join('') : `<div class="empty-state">${icon('info')}<h4>No history yet</h4></div>`;
+    body.querySelectorAll('[data-goto-related]').forEach(el => el.addEventListener('click', () => {
+      const [rk, docId] = el.dataset.gotoRelated.split('|');
+      closeModal();
+      navigateTo('register-form', { registerKey: rk, id: docId });
+    }));
   } catch (err) {
     document.getElementById('bh-body').innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load history</h4></div>`;
   }
@@ -2798,7 +2820,6 @@ async function openRescheduleModal(registerKey, oldRow, onDone) {
     const btn = document.getElementById('rs-save');
     setBtnLoading(btn, true, 'Rescheduling…');
     try {
-      await updateBookingStatusOnly(registerKey, oldRow.id, oldRow, 'Rescheduled');
       const newData = {
         appointmentDate: newDate, timeSlot: newTimeSlot, patientName: oldRow.patientName, mobileNumber: oldRow.mobileNumber,
         priority: oldRow.priority || 'Normal', source: oldRow.source, status: 'Booked', remarks: newRemarks
@@ -2811,7 +2832,12 @@ async function openRescheduleModal(registerKey, oldRow, onDone) {
         newData.requestedTests = oldRow.requestedTests || [];
         if (reg.key === 'homeCollection') { newData.address = oldRow.address; newData.area = oldRow.area; newData.pin = oldRow.pin; }
       }
-      const created = await createBooking(registerKey, newData);
+      // Create the replacement booking FIRST, then mark the old one Rescheduled. If
+      // something fails partway through, the worst case is a duplicate "Booked" entry —
+      // visible and easy to spot — rather than the old entry vanishing into "Rescheduled"
+      // with no replacement ever created.
+      const created = await createBooking(registerKey, newData, { bookingDocId: oldRow.id, bookingId: oldRow.bookingId });
+      await updateBookingStatusOnly(registerKey, oldRow.id, oldRow, 'Rescheduled', { bookingDocId: created.id, bookingId: created.bookingId });
       closeModal();
       toast(`Rescheduled — new booking ${created.bookingId} created for ${formatDateHuman(newDate)}.`, 'success');
       onDone(true);
@@ -2880,6 +2906,23 @@ async function renderRegisterFormView(content, registerKey, id) {
     if (extra.error) { toast(extra.error, 'error'); return; }
     const payload = Object.assign({ appointmentDate, timeSlot, patientName, mobileNumber, priority, source, status, remarks }, extra.data);
     const btn = document.getElementById('rf-save');
+
+    // Rescheduling is a workflow (keep the old entry, spin off a new Booked one), not a
+    // plain status value — picking it here must behave exactly like picking it from the
+    // list view's quick-status dropdown, instead of silently saving status="Rescheduled"
+    // with no replacement booking ever created.
+    if (existing && status === 'Rescheduled' && existing.status !== 'Rescheduled') {
+      setBtnLoading(btn, true, 'Saving…');
+      try {
+        const preRescheduleData = Object.assign({}, payload, { status: existing.status });
+        await updateBooking(registerKey, existing.id, preRescheduleData, existing);
+        const freshRow = Object.assign({}, existing, preRescheduleData, { id: existing.id });
+        setBtnLoading(btn, false);
+        openRescheduleModal(registerKey, freshRow, (didReschedule) => { if (didReschedule) navigateTo(registerKey); });
+      } catch (err) { setBtnLoading(btn, false); toast(err.message || 'Save failed.', 'error'); }
+      return;
+    }
+
     setBtnLoading(btn, true, existing ? 'Saving…' : 'Creating…');
     try {
       if (existing) { await updateBooking(registerKey, existing.id, payload, existing); showSaveFlash('Booking Updated'); }
