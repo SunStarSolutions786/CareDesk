@@ -274,6 +274,8 @@ nav.side-nav{flex:1;padding:6px 12px;overflow-y:auto;}
 
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px;}
 .clinic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,330px));gap:14px;margin-bottom:22px;}
+.dash-chart-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:20px;}
+.report-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:10px;}
 .stat-card{
   background:var(--paper-0);border:1px solid var(--line-200);border-radius:var(--radius-md);padding:18px 20px;
   transition:transform var(--transition),box-shadow var(--transition);position:relative;overflow:hidden;
@@ -512,6 +514,7 @@ td.id-cell{font-family:var(--font-mono);letter-spacing:0.3px;font-weight:600;}
   .form-grid,.form-grid.cols-3{grid-template-columns:1fr;}
   .field-wrap.span-2{grid-column:span 1;}
   .multi-row{grid-template-columns:1fr;}
+  .dash-chart-grid,.report-chart-grid{grid-template-columns:1fr;}
   #sidebar-scrim{display:none;position:fixed;inset:0;background:rgba(11,31,38,0.4);z-index:39;}
   #sidebar-scrim.show{display:block;}
 }
@@ -3002,7 +3005,7 @@ async function renderReportSummary(registerKey, monthly) {
         <div class="stat-card accent-ink"><span class="lbl"><span class="stat-icon-badge badge-ink">${icon('calendar')}</span>Total</span><div class="val">${formatInt(total)}</div></div>
         ${STATUS_OPTIONS.map(s => `<div class="stat-card accent-${statusAccent(s)}"><span class="lbl"><span class="stat-icon-badge badge-${statusAccent(s)}">${icon('check')}</span>${s}</span><div class="val">${formatInt(byStatus[s])}</div></div>`).join('')}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:10px;">
+      <div class="report-chart-grid">
         <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14px;margin-bottom:10px;">By Status</h3><canvas id="rp-status-chart" height="220"></canvas></div>
         <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14px;margin-bottom:10px;">By Month</h3><canvas id="rp-month-chart" height="220"></canvas></div>
       </div>
@@ -3115,7 +3118,7 @@ async function renderDashboardView(content) {
       <div class="stat-card accent-teal"><span class="lbl"><span class="stat-icon-badge badge-teal">${icon('barChart')}</span>Next 7 Days</span><div class="val" id="dk-week">0</div></div>
       <div class="stat-card accent-violet"><span class="lbl"><span class="stat-icon-badge badge-violet">${icon('star')}</span>All-Time Bookings</span><div class="val" id="dk-alltime">0</div></div>
     </div>
-    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:20px;" id="dk-chart-grid">
+    <div class="dash-chart-grid" id="dk-chart-grid">
       <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Register</h3><div style="position:relative;height:230px;"><canvas id="dk-register-chart"></canvas></div></div>
       <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Status</h3><div style="position:relative;height:230px;"><canvas id="dk-status-chart"></canvas></div></div>
     </div>
