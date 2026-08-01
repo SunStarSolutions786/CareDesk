@@ -712,7 +712,7 @@ function getSecondaryAuth() {
    usually already warm by the time Dashboard/Reports/Export are used.
    ============================================================ */
 const XLSX_CDN = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js'; // SheetJS 0.18.5 + cell styling (colors/fonts) support
-const CHARTJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';
+const CHARTJS_CDN = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js'; // was cdnjs.cloudflare.com — blocked on some networks; jsdelivr (already used for xlsx-js-style below) is not
 const LOADED_SCRIPTS = {};
 function loadScriptOnce(src) {
   if (!LOADED_SCRIPTS[src]) {
@@ -3119,8 +3119,8 @@ async function renderDashboardView(content) {
       <div class="stat-card accent-violet"><span class="lbl"><span class="stat-icon-badge badge-violet">${icon('star')}</span>All-Time Bookings</span><div class="val" id="dk-alltime">0</div></div>
     </div>
     <div class="dash-chart-grid" id="dk-chart-grid">
-      <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Register</h3><div style="position:relative;height:230px;"><canvas id="dk-register-chart"></canvas></div></div>
-      <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Status</h3><div style="position:relative;height:230px;"><canvas id="dk-status-chart"></canvas></div></div>
+      <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Register</h3><div style="position:relative;height:230px;" id="dk-register-chart-wrap"><canvas id="dk-register-chart"></canvas></div></div>
+      <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14.5px;margin-bottom:14px;">Today, by Status</h3><div style="position:relative;height:230px;" id="dk-status-chart-wrap"><canvas id="dk-status-chart"></canvas></div></div>
     </div>
     <div class="card" style="margin-bottom:20px;">
       <div class="card-head"><h3>Recent Activity</h3><span class="u-muted" style="font-size:12px;">Today, most recent first</span></div>
@@ -3148,30 +3148,44 @@ async function renderDashboardView(content) {
 
   if (dashRegisterChart) { dashRegisterChart.destroy(); dashRegisterChart = null; }
   if (dashStatusChart) { dashStatusChart.destroy(); dashStatusChart = null; }
-  try {
-    await loadScriptOnce(CHARTJS_CDN);
-    if (!document.body.contains(content)) return; // navigated away while the chart library was loading
-    const regCtx = document.getElementById('dk-register-chart');
-    if (regCtx && window.Chart) {
-      const accentHex = { teal: '#14948F', blue: '#2E77E0', amber: '#DE7F1E', violet: '#8562C7' };
-      dashRegisterChart = new Chart(regCtx, {
-        type: 'bar',
-        data: { labels: registersToShow.map(k => REGISTERS[k].short), datasets: [{ data: registersToShow.map(k => todayRows[k].length), backgroundColor: registersToShow.map(k => accentHex[REGISTERS[k].accent] || '#14948F'), borderRadius: 8, maxBarThickness: 46 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, animation: { duration: 700 } }
-      });
+  async function drawDashChart(kind) {
+    const isReg = kind === 'register';
+    const wrap = document.getElementById(isReg ? 'dk-register-chart-wrap' : 'dk-status-chart-wrap');
+    if (!wrap) return;
+    const canvasId = isReg ? 'dk-register-chart' : 'dk-status-chart';
+    try {
+      await loadScriptOnce(CHARTJS_CDN);
+      if (!document.body.contains(wrap)) return; // navigated away while the chart library was loading
+      if (!window.Chart) throw new Error('Chart library did not load.');
+      wrap.innerHTML = `<canvas id="${canvasId}"></canvas>`; // fresh canvas in case this is a retry after a failure
+      const ctx = document.getElementById(canvasId);
+      if (isReg) {
+        const accentHex = { teal: '#14948F', blue: '#2E77E0', amber: '#DE7F1E', violet: '#8562C7' };
+        dashRegisterChart = new Chart(ctx, {
+          type: 'bar',
+          data: { labels: registersToShow.map(k => REGISTERS[k].short), datasets: [{ data: registersToShow.map(k => todayRows[k].length), backgroundColor: registersToShow.map(k => accentHex[REGISTERS[k].accent] || '#14948F'), borderRadius: 8, maxBarThickness: 46 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, animation: { duration: 700 } }
+        });
+      } else {
+        dashStatusChart = new Chart(ctx, {
+          type: 'doughnut',
+          data: { labels: STATUS_OPTIONS, datasets: [{ data: STATUS_OPTIONS.map(s => statusToday[s]), backgroundColor: ['#2E77E0', '#1FAA6D', '#DC2626', '#DE7F1E'], borderWidth: 0 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11.5 }, padding: 12 } } }, cutout: '65%', animation: { animateScale: true, duration: 700 } }
+        });
+      }
+    } catch (err) {
+      console.warn(`${kind} chart could not render:`, err);
+      if (!document.body.contains(wrap)) return;
+      wrap.innerHTML = `<div class="u-center" style="flex-direction:column;height:100%;color:var(--slate-500);text-align:center;padding:0 16px;">
+        ${icon('alertTriangle')}<p style="font-size:12.5px;margin:10px 0 12px;">Couldn't load this chart.<br>${escapeHtml((err && err.message) || 'Please check your connection.')}</p>
+        <button type="button" class="btn btn-secondary btn-sm" data-retry-chart="${kind}">${icon('refresh')}Retry</button>
+      </div>`;
+      const retryBtn = wrap.querySelector('[data-retry-chart]');
+      if (retryBtn) retryBtn.addEventListener('click', () => drawDashChart(kind));
     }
-  } catch (err) { console.warn('Register chart could not render:', err); }
-  try {
-    if (!document.body.contains(content)) return;
-    const stCtx = document.getElementById('dk-status-chart');
-    if (stCtx && window.Chart) {
-      dashStatusChart = new Chart(stCtx, {
-        type: 'doughnut',
-        data: { labels: STATUS_OPTIONS, datasets: [{ data: STATUS_OPTIONS.map(s => statusToday[s]), backgroundColor: ['#2E77E0', '#1FAA6D', '#DC2626', '#DE7F1E'], borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11.5 }, padding: 12 } } }, cutout: '65%', animation: { animateScale: true, duration: 700 } }
-      });
-    }
-  } catch (err) { console.warn('Status chart could not render:', err); }
+  }
+  drawDashChart('register');
+  drawDashChart('status');
 }
 
 /* ============================================================
