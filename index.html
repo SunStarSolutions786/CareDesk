@@ -2722,7 +2722,7 @@ function registerExtraFieldsHtml(reg, existing, prefill) {
       <div class="field-wrap"><label>Doctor Name <span class="req">*</span></label><div class="search-select" id="rf-doctor"></div></div>
       <div class="field-wrap"><label>Specialty</label><input type="text" id="rf-specialty" value="${escapeHtml((existing && existing.specialty) || (prefill && prefill.specialty) || '')}" readonly style="background:var(--paper-50);color:var(--slate-500);" placeholder="Auto-filled from Doctor Name"></div>
     </div>`;
-    if (reg.key === 'dental') html += `<div class="form-grid" style="margin-top:16px;"><div class="field-wrap"><label>Treatment Type <span class="req">*</span></label><select id="rf-treatment">${optionsHtml(state.settings.dentalTreatmentTypes, existing && existing.treatmentType, { blank: '— Select —' })}</select></div></div>`;
+    if (reg.key === 'dental') html += `<div class="form-grid" style="margin-top:16px;"><div class="field-wrap"><label>Treatment Type <span class="req">*</span></label><select id="rf-treatment">${optionsHtml(state.settings.dentalTreatmentTypes, (existing && existing.treatmentType) || (prefill && prefill.treatmentType), { blank: '— Select —' })}</select></div></div>`;
     return html;
   }
   if (reg.key === 'test' || reg.key === 'homeCollection') {
@@ -2898,6 +2898,7 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
     if (!existing) { content.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Booking not found</h4></div>`; return; }
   }
   const slots = generateTimeSlots(reg.slotKey);
+  const showAvailBtn = !existing && (reg.key === 'doctor' || reg.key === 'dental');
   content.innerHTML = `
     <div class="form-page">
       <button class="btn btn-ghost btn-sm" id="rf-back" style="margin-bottom:16px;">${icon('arrowLeft')}Back to ${escapeHtml(reg.label)}</button>
@@ -2912,15 +2913,21 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
         <p class="hint" style="margin-bottom:18px;">Fields marked <span class="req">*</span> are required.</p>
         <div class="form-grid">
           <div class="field-wrap"><label>Appointment Date <span class="req">*</span></label><input type="date" id="rf-date" value="${existing ? existing.appointmentDate : ((prefill && prefill.appointmentDate) || todayISO())}"></div>
-          <div class="field-wrap"><label>Time Slot <span class="req">*</span></label><div class="search-select" id="rf-timeslot"></div></div>
-          <div class="field-wrap"><label>Patient Name <span class="req">*</span></label><input type="text" id="rf-patient" value="${escapeHtml(existing ? existing.patientName : '')}"></div>
-          <div class="field-wrap"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="rf-mobile" value="${escapeHtml(existing ? existing.mobileNumber : '')}" placeholder="e.g. 9876543210"></div>
-          <div class="field-wrap"><label>Priority</label><select id="rf-priority">${optionsHtml(PRIORITY_OPTIONS, existing ? existing.priority : 'Normal')}</select></div>
-          <div class="field-wrap"><label>Booking Source <span class="req">*</span></label><select id="rf-source">${optionsHtml(state.settings.bookingSources, existing ? existing.source : '', { blank: '— Select —' })}</select></div>
+          <div class="field-wrap">
+            <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <span>Time Slot <span class="req">*</span></span>
+              ${showAvailBtn ? `<button type="button" id="rf-avail-btn" class="btn btn-ghost btn-sm" style="padding:3px 10px;font-size:11px;font-weight:600;">${icon('calendar')}Availability Calendar</button>` : ''}
+            </label>
+            <div class="search-select" id="rf-timeslot"></div>
+          </div>
+          <div class="field-wrap"><label>Patient Name <span class="req">*</span></label><input type="text" id="rf-patient" value="${escapeHtml(existing ? existing.patientName : ((prefill && prefill.patientName) || ''))}"></div>
+          <div class="field-wrap"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="rf-mobile" value="${escapeHtml(existing ? existing.mobileNumber : ((prefill && prefill.mobileNumber) || ''))}" placeholder="e.g. 9876543210"></div>
+          <div class="field-wrap"><label>Priority</label><select id="rf-priority">${optionsHtml(PRIORITY_OPTIONS, existing ? existing.priority : ((prefill && prefill.priority) || 'Normal'))}</select></div>
+          <div class="field-wrap"><label>Booking Source <span class="req">*</span></label><select id="rf-source">${optionsHtml(state.settings.bookingSources, existing ? existing.source : ((prefill && prefill.source) || ''), { blank: '— Select —' })}</select></div>
           ${existing ? `<div class="field-wrap"><label>Status</label><select id="rf-status">${optionsHtml(STATUS_OPTIONS, existing.status)}</select></div>` : ''}
         </div>
         <div id="rf-extra-fields">${registerExtraFieldsHtml(reg, existing, prefill)}</div>
-        <div class="field-wrap span-2" style="margin-top:16px;"><label>Remarks</label><textarea id="rf-remarks">${escapeHtml(existing ? existing.remarks || '' : '')}</textarea></div>
+        <div class="field-wrap span-2" style="margin-top:16px;"><label>Remarks</label><textarea id="rf-remarks">${escapeHtml(existing ? existing.remarks || '' : ((prefill && prefill.remarks) || ''))}</textarea></div>
         <div class="divider"></div>
         <div class="u-flex u-gap-8" style="justify-content:flex-end;">
           <button class="btn btn-secondary" id="rf-cancel">Cancel</button>
@@ -2932,6 +2939,25 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
   const timeSlotCtrl = initSearchSelect('rf-timeslot', slots.map(s => ({ value: s, label: s })), existing ? existing.timeSlot : ((prefill && prefill.timeSlot) || ''), null, 'Search or type a time…', true);
   document.getElementById('rf-timeslot')._ssController = timeSlotCtrl;
   registerExtraFieldsInit(reg, existing, prefill);
+  if (showAvailBtn) {
+    document.getElementById('rf-avail-btn').addEventListener('click', () => {
+      const doctorName = document.getElementById('rf-doctor')._ssController.getValue();
+      if (!doctorName) { toast('Pick a doctor first.', 'error'); return; }
+      const appointmentDate = document.getElementById('rf-date').value || todayISO();
+      const draft = {
+        appointmentDate,
+        doctorName,
+        specialty: document.getElementById('rf-specialty').value,
+        patientName: document.getElementById('rf-patient').value,
+        mobileNumber: document.getElementById('rf-mobile').value,
+        priority: document.getElementById('rf-priority').value,
+        source: document.getElementById('rf-source').value,
+        remarks: document.getElementById('rf-remarks').value
+      };
+      if (reg.key === 'dental') draft.treatmentType = document.getElementById('rf-treatment').value;
+      navigateTo('availability', { registerKey, doctorName, date: appointmentDate, draft });
+    });
+  }
   document.getElementById('rf-back').addEventListener('click', () => navigateTo(registerKey));
   document.getElementById('rf-cancel').addEventListener('click', () => navigateTo(registerKey));
   if (existing) document.getElementById('rf-history-btn').addEventListener('click', () => openBookingHistoryModal(registerKey, existing.id, existing.bookingId));
@@ -2985,6 +3011,7 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
    ============================================================ */
 async function renderAvailabilityView(content) {
   const vp = state.viewParams || {};
+  const draft = vp.draft || null; // present only when opened from the booking form's own Availability Calendar button
   const availRegisters = ['doctor', 'dental'].filter(k => !state.isAgent || (state.user.permissions && state.user.permissions[k]));
   if (!availRegisters.length) {
     content.innerHTML = `<div class="empty-state">${icon('lock')}<h4>No access</h4><p>You don't have access to the Doctor or Dental registers.</p></div>`;
@@ -2995,7 +3022,8 @@ async function renderAvailabilityView(content) {
   const date = vp.date || todayISO();
   const earliest = earliestVisibleDate();
   content.innerHTML = `
-    <div class="pill-filters" style="margin-bottom:14px;">${availRegisters.map(k => `<button class="pill ${registerKey === k ? 'active' : ''}" data-avrk="${k}">${escapeHtml(REGISTERS[k].label)}</button>`).join('')}</div>
+    ${draft ? `<button class="btn btn-ghost btn-sm" id="av-back-btn" style="margin-bottom:14px;">${icon('arrowLeft')}Back to Booking</button>` : ''}
+    ${draft ? '' : `<div class="pill-filters" style="margin-bottom:14px;">${availRegisters.map(k => `<button class="pill ${registerKey === k ? 'active' : ''}" data-avrk="${k}">${escapeHtml(REGISTERS[k].label)}</button>`).join('')}</div>`}
     <div class="table-wrap">
       <div class="table-toolbar">
         <div id="av-doctor" class="search-select" style="min-width:220px;max-width:320px;flex:1;"></div>
@@ -3004,20 +3032,21 @@ async function renderAvailabilityView(content) {
       <div id="av-body" style="padding:24px;">${doctorName ? loaderHtml() : `<div class="empty-state">${icon('calendar')}<h4>Pick a doctor</h4><p>Choose a doctor above to see their schedule for the selected date.</p></div>`}</div>
     </div>
   `;
+  if (draft) document.getElementById('av-back-btn').addEventListener('click', () => navigateTo('register-form', { registerKey, id: null, prefill: draft }));
   content.querySelectorAll('[data-avrk]').forEach(el => el.addEventListener('click', () => {
     if (el.dataset.avrk === registerKey) return;
-    navigateTo('availability', { registerKey: el.dataset.avrk, doctorName, date });
+    navigateTo('availability', { registerKey: el.dataset.avrk, doctorName, date, draft });
   }));
   document.getElementById('av-date').addEventListener('change', (e) => {
     if (!e.target.value) return;
-    navigateTo('availability', { registerKey, doctorName, date: e.target.value });
+    navigateTo('availability', { registerKey, doctorName, date: e.target.value, draft });
   });
   initSearchSelect('av-doctor', state.doctors.map(d => ({ value: d.name, label: d.name + (d.specialty ? ' — ' + d.specialty : '') })), doctorName, (val) => {
-    navigateTo('availability', { registerKey, doctorName: val, date });
+    navigateTo('availability', { registerKey, doctorName: val, date, draft });
   }, 'Search doctor to see availability…');
-  if (doctorName) await loadAndRenderAvailability(registerKey, doctorName, date);
+  if (doctorName) await loadAndRenderAvailability(registerKey, doctorName, date, draft);
 }
-async function loadAndRenderAvailability(registerKey, doctorName, date) {
+async function loadAndRenderAvailability(registerKey, doctorName, date, draft) {
   const body = document.getElementById('av-body');
   body.innerHTML = loaderHtml();
   try {
@@ -3029,12 +3058,13 @@ async function loadAndRenderAvailability(registerKey, doctorName, date) {
     forDoctor.forEach(r => { if (!bySlot.has(r.timeSlot)) bySlot.set(r.timeSlot, r); });
     const openCount = slots.filter(s => !bySlot.has(s)).length;
     body.innerHTML = `
-      <p class="hint" style="margin-bottom:14px;">${openCount} of ${slots.length} slot(s) open on ${escapeHtml(formatDateHuman(date))} for <b>${escapeHtml(doctorName)}</b>. Tap an open slot to book it.</p>
+      <p class="hint" style="margin-bottom:14px;">${openCount} of ${slots.length} slot(s) open on ${escapeHtml(formatDateHuman(date))} for <b>${escapeHtml(doctorName)}</b>. Tap an open slot to ${draft ? 'continue your booking' : 'book it'}.</p>
       <div class="avail-grid">${slots.map(s => availSlotHtml(s, bySlot.get(s))).join('')}</div>
     `;
     body.querySelectorAll('[data-book-slot]').forEach(el => el.addEventListener('click', () => {
       const doc = state.doctors.find(d => d.name === doctorName);
-      navigateTo('register-form', { registerKey, id: null, prefill: { appointmentDate: date, timeSlot: el.dataset.bookSlot, doctorName, specialty: (doc && doc.specialty) || '' } });
+      const base = { appointmentDate: date, timeSlot: el.dataset.bookSlot, doctorName, specialty: (doc && doc.specialty) || '' };
+      navigateTo('register-form', { registerKey, id: null, prefill: draft ? Object.assign({}, draft, base) : base });
     }));
   } catch (err) {
     console.error(err);
