@@ -2921,18 +2921,13 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
           <div class="u-flex u-gap-8" style="align-items:center;">
             ${existing ? `<span class="summary-pill">${icon('calendar')}${escapeHtml(existing.bookingId)}</span><button type="button" class="btn btn-ghost btn-sm" id="rf-history-btn">${icon('clock')}History</button>` : ''}
             ${!existing && prefill ? `<span class="summary-pill" style="background:var(--teal-50);color:var(--teal-700);">${icon('calendar')}From Availability Calendar</span>` : ''}
+            ${showAvailBtn ? `<button type="button" id="rf-avail-btn" class="btn btn-ghost btn-sm">${icon('calendar')}Availability Calendar</button>` : ''}
           </div>
         </div>
         <p class="hint" style="margin-bottom:18px;">Fields marked <span class="req">*</span> are required.</p>
         <div class="form-grid">
           <div class="field-wrap"><label>Appointment Date <span class="req">*</span></label><input type="date" id="rf-date" value="${existing ? existing.appointmentDate : ((prefill && prefill.appointmentDate) || todayISO())}"></div>
-          <div class="field-wrap">
-            <label style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-              <span>Time Slot <span class="req">*</span></span>
-              ${showAvailBtn ? `<button type="button" id="rf-avail-btn" class="btn btn-ghost btn-sm" style="padding:3px 10px;font-size:11px;font-weight:600;">${icon('calendar')}Availability Calendar</button>` : ''}
-            </label>
-            <div class="search-select" id="rf-timeslot"></div>
-          </div>
+          <div class="field-wrap"><label>Time Slot <span class="req">*</span></label><div class="search-select" id="rf-timeslot"></div></div>
           <div class="field-wrap"><label>Patient Name <span class="req">*</span></label><input type="text" id="rf-patient" value="${escapeHtml(existing ? existing.patientName : ((prefill && prefill.patientName) || ''))}"></div>
           <div class="field-wrap"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="rf-mobile" value="${escapeHtml(existing ? existing.mobileNumber : ((prefill && prefill.mobileNumber) || ''))}" placeholder="e.g. 9876543210"></div>
           <div class="field-wrap"><label>Priority</label><select id="rf-priority">${optionsHtml(PRIORITY_OPTIONS, existing ? existing.priority : ((prefill && prefill.priority) || 'Normal'))}</select></div>
@@ -2955,7 +2950,6 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
   if (showAvailBtn) {
     document.getElementById('rf-avail-btn').addEventListener('click', () => {
       const doctorName = document.getElementById('rf-doctor')._ssController.getValue();
-      if (!doctorName) { toast('Pick a doctor first.', 'error'); return; }
       const appointmentDate = document.getElementById('rf-date').value || todayISO();
       const draft = {
         appointmentDate,
@@ -2968,7 +2962,9 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
         remarks: document.getElementById('rf-remarks').value
       };
       if (reg.key === 'dental') draft.treatmentType = document.getElementById('rf-treatment').value;
-      navigateTo('availability', { registerKey, doctorName, date: appointmentDate, draft });
+      // No doctor picked yet → go straight to the All Doctors matrix so one can be found there;
+      // a doctor already picked → go straight to that doctor's own day view.
+      navigateTo('availability', { registerKey, doctorName, date: appointmentDate, draft, mode: doctorName ? 'single' : 'matrix' });
     });
   }
   document.getElementById('rf-back').addEventListener('click', () => navigateTo(registerKey));
