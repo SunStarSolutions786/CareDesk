@@ -283,7 +283,6 @@ nav.side-nav{flex:1;padding:6px 12px;overflow-y:auto;}
 .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
 .stat-card .lbl{font-size:11.5px;font-weight:600;color:var(--slate-500);text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:6px;}
 .stat-card .val{font-family:var(--font-mono);font-size:26px;font-weight:600;margin-top:8px;color:var(--ink-900);}
-.stat-card .delta{font-size:12px;margin-top:5px;font-weight:600;}
 .stat-card.accent-teal{border-top:3px solid var(--teal-500);}
 .stat-card.accent-green{border-top:3px solid var(--green-500);}
 .stat-card.accent-amber{border-top:3px solid var(--amber-500);}
@@ -500,6 +499,17 @@ td.id-cell{font-family:var(--font-mono);letter-spacing:0.3px;font-weight:600;}
 .register-tile .txt{min-width:0;}
 .register-tile .txt .t{font-family:var(--font-display);font-weight:600;font-size:14.5px;color:var(--ink-900);}
 .register-tile .txt .s{font-size:12px;color:var(--slate-500);margin-top:2px;}
+
+/* Availability Calendar — one card per time slot, open ones are real buttons */
+.avail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;}
+.avail-slot{border-radius:var(--radius-sm);padding:12px 14px;display:flex;flex-direction:column;gap:6px;border:1.5px solid var(--line-200);text-align:left;font-family:var(--font-body);}
+.avail-slot-time{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--ink-900);}
+.avail-slot.free{background:var(--teal-50);border-color:var(--teal-100);cursor:pointer;transition:all var(--transition);}
+.avail-slot.free:hover{background:var(--teal-100);border-color:var(--teal-400);transform:translateY(-1px);box-shadow:var(--shadow-sm);}
+.avail-slot.free .avail-slot-status{color:var(--teal-600);font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px;}
+.avail-slot.free .avail-slot-status svg{width:13px;height:13px;}
+.avail-slot.taken{background:var(--paper-50);}
+.avail-slot.taken .avail-slot-status{font-size:12px;color:var(--slate-600);display:flex;align-items:center;flex-wrap:wrap;gap:5px;}
 
 #global-loader{position:fixed;inset:0;background:var(--paper-50);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
 
@@ -838,7 +848,8 @@ const VIEW_TITLES = {
   masters: ['Masters', 'Doctors & Tests used across registers'],
   users: ['User Management', ''],
   reports: ['Reports', ''],
-  settings: ['Settings', '']
+  settings: ['Settings', ''],
+  availability: ['Availability Calendar', 'Find an open slot and book straight in']
 };
 
 /* ============================================================
@@ -1104,13 +1115,7 @@ function initSearchSelect(id, options, initialValue, onSelect, blankLabel, freeT
     }, 150);
   });
   return {
-    getValue: () => value,
-    setOptions: (newOptions, newValue) => {
-      opts = newOptions.slice();
-      if (newValue !== undefined) value = newValue;
-      if (value && !opts.some(o => o.value === value)) opts = [{ value, label: value + ' (custom)' }].concat(opts);
-      input.value = labelFor(value);
-    }
+    getValue: () => value
   };
 }
 
@@ -1317,6 +1322,7 @@ const NAV_ITEMS_ADMIN = [
   { view: 'test', label: REGISTERS.test.label, icon: REGISTERS.test.icon },
   { view: 'homeCollection', label: REGISTERS.homeCollection.label, icon: REGISTERS.homeCollection.icon },
   { view: 'dental', label: REGISTERS.dental.label, icon: REGISTERS.dental.icon },
+  { view: 'availability', label: 'Availability Calendar', icon: 'calendar' },
   { view: 'masters', label: 'Masters', icon: 'building' },
   { view: 'users', label: 'User Management', icon: 'users' },
   { view: 'reports', label: 'Reports', icon: 'barChart' },
@@ -1326,6 +1332,7 @@ function navItemsForAgent() {
   const perms = (state.user && state.user.permissions) || {};
   const items = [{ view: 'dashboard', label: 'Dashboard', icon: 'grid' }];
   REGISTER_KEYS.forEach(k => { if (perms[k]) items.push({ view: k, label: REGISTERS[k].label, icon: REGISTERS[k].icon }); });
+  if (perms.doctor || perms.dental) items.push({ view: 'availability', label: 'Availability Calendar', icon: 'calendar' });
   return items;
 }
 function currentNavItems() {
@@ -1357,10 +1364,22 @@ function renderShellChrome() {
   document.getElementById('user-role').textContent = state.user.role;
 }
 function renderTopbarCrumb() {
-  const t = VIEW_TITLES[state.view] || [state.view, ''];
-  const title = REGISTERS[state.view] ? REGISTERS[state.view].label : t[0];
+  let title, sub;
+  if (state.view === 'register-form') {
+    const reg = REGISTERS[state.viewParams.registerKey];
+    title = reg ? reg.label : 'Booking';
+    sub = state.viewParams.id ? 'Edit Booking' : 'New Booking';
+  } else if (state.view === 'recycle-bin') {
+    const kind = state.viewParams.kind;
+    title = 'Recycle Bin';
+    sub = kind === 'users' ? 'Deleted Agents' : (REGISTERS[kind] ? `Deleted ${REGISTERS[kind].label}` : '');
+  } else {
+    const t = VIEW_TITLES[state.view] || [state.view, ''];
+    title = REGISTERS[state.view] ? REGISTERS[state.view].label : t[0];
+    sub = t[1] || '';
+  }
   document.getElementById('crumb-title').textContent = title;
-  document.getElementById('crumb-sub').textContent = t[1] || '';
+  document.getElementById('crumb-sub').textContent = sub;
   document.getElementById('topbar-actions').innerHTML = '';
 }
 async function renderView(view, params) {
@@ -1375,7 +1394,8 @@ async function renderView(view, params) {
     else if (view === 'users') await renderUserManagementView(content, params.forceRefresh);
     else if (view === 'reports') await renderReportsView(content);
     else if (view === 'settings') await renderSettingsView(content);
-    else if (view === 'register-form') await renderRegisterFormView(content, params.registerKey, params.id);
+    else if (view === 'availability') await renderAvailabilityView(content);
+    else if (view === 'register-form') await renderRegisterFormView(content, params.registerKey, params.id, params.prefill);
     else if (view === 'recycle-bin') await renderRecycleBinView(content, params.kind);
     else content.innerHTML = `<div class="empty-state"><h4>Not found</h4></div>`;
   } catch (err) {
@@ -1518,7 +1538,7 @@ async function openManageClinicModal(clinicId) {
     catch (err) { toast(err.message || 'Update failed.', 'error'); }
   });
   document.getElementById('mb-add-admin-btn').addEventListener('click', () => openCreateStaffModal(clinicId, ROLES.ADMIN, () => openManageClinicModal(clinicId)));
-  content_wireClinicAdminRowButtons(clinicId);
+  wireClinicAdminRowButtons(clinicId);
   document.getElementById('bd-run-btn').addEventListener('click', async () => {
     const registerKey = document.getElementById('bd-register').value;
     const from = document.getElementById('bd-from').value, to = document.getElementById('bd-to').value;
@@ -1565,7 +1585,7 @@ function clinicAdminRowHtml(a) {
     </div>
   `;
 }
-function content_wireClinicAdminRowButtons(clinicId) {
+function wireClinicAdminRowButtons(clinicId) {
   document.querySelectorAll('[data-reset-pw]').forEach(el => el.addEventListener('click', async () => {
     try { await sendPasswordResetEmail(auth, el.dataset.email); toast('Password reset email sent.', 'success'); } catch (err) { toast(err.message, 'error'); }
   }));
@@ -1628,11 +1648,13 @@ async function bulkDeleteRegisterByDateRange(clinicId, registerKey, fromISO, toI
     }
     await batch.commit();
   }
+  await deleteHistorySubcollections(docs.map(d => d.ref));
   return docs.length;
 }
-async function deleteAllInSubcollection(clinicId, subName) {
+async function deleteAllInSubcollection(clinicId, subName, withHistory) {
   const snap = await getDocs(collection(db, 'clinics', clinicId, subName));
   const docs = snap.docs;
+  if (withHistory) await deleteHistorySubcollections(docs.map(d => d.ref));
   for (let i = 0; i < docs.length; i += 450) {
     const batch = writeBatch(db);
     docs.slice(i, i + 450).forEach(d => batch.delete(d.ref));
@@ -1640,9 +1662,9 @@ async function deleteAllInSubcollection(clinicId, subName) {
   }
 }
 async function deleteClinicCascade(clinicId) {
-  const subs = ['doctors', 'tests', 'counters', 'monthlySummaries', 'meta']
-    .concat(REGISTER_KEYS.map(k => REGISTERS[k].collection));
-  for (const s of subs) await deleteAllInSubcollection(clinicId, s);
+  const bookingCollections = new Set(REGISTER_KEYS.map(k => REGISTERS[k].collection));
+  const subs = ['doctors', 'tests', 'counters', 'monthlySummaries', 'meta'].concat([...bookingCollections]);
+  for (const s of subs) await deleteAllInSubcollection(clinicId, s, bookingCollections.has(s));
   // Must run before the Firestore user docs are deleted below — the Cloud Function looks
   // up who belongs to this clinic via those same records. Silently returns null if the
   // function isn't deployed; the Firestore-side deletion below still completes either way.
@@ -1839,8 +1861,23 @@ async function restoreBooking(registerKey, id, existingRow) {
   await batch.commit();
   await logBookingHistory(registerKey, id, 'restored', null);
 }
+// Firestore never cascade-deletes subcollections on its own — deleting a booking doc without
+// this would leave its /history entries behind forever, orphaned and unreachable. Used by every
+// permanent-delete path below (recycle bin purge, bulk date-range delete, delete-clinic cascade).
+async function deleteHistorySubcollections(refs) {
+  for (const ref of refs) {
+    const histSnap = await getDocs(collection(ref, 'history'));
+    for (let i = 0; i < histSnap.docs.length; i += 450) {
+      const batch = writeBatch(db);
+      histSnap.docs.slice(i, i + 450).forEach(h => batch.delete(h.ref));
+      await batch.commit();
+    }
+  }
+}
 async function purgeBookingPermanently(registerKey, id) {
-  await deleteDoc(doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id));
+  const ref = doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id);
+  await deleteHistorySubcollections([ref]);
+  await deleteDoc(ref);
 }
 async function getBookingDoc(registerKey, id) {
   const snap = await getDoc(doc(db, 'clinics', state.clinicId, REGISTERS[registerKey].collection, id));
@@ -2499,12 +2536,18 @@ async function bulkCreateBookings(registerKey, rowsData) {
       monthDelta[mk].total = (monthDelta[mk].total || 0) + 1;
       monthDelta[mk].Booked = (monthDelta[mk].Booked || 0) + 1;
     }
-    return { ref: doc(colRef), payload };
+    const ref = doc(colRef);
+    return { ref, payload, historyRef: doc(collection(ref, 'history')) };
   });
-  for (let i = 0; i < docsToWrite.length; i += 400) {
-    const chunk = docsToWrite.slice(i, i + 400);
+  // 2 writes per row now (the booking + its "created" history entry), so chunk at 200 rows
+  // to stay safely under Firestore's 500-operation batch limit.
+  for (let i = 0; i < docsToWrite.length; i += 200) {
+    const chunk = docsToWrite.slice(i, i + 200);
     const batch = writeBatch(db);
-    chunk.forEach(({ ref, payload }) => batch.set(ref, payload));
+    chunk.forEach(({ ref, payload, historyRef }) => {
+      batch.set(ref, payload);
+      batch.set(historyRef, { action: 'created', changes: null, by: state.user.uid, byName: state.user.name, at: serverTimestamp() });
+    });
     if (i === 0) {
       const dsPatch = {};
       Object.keys(dsDelta).forEach(k => { if (dsDelta[k]) dsPatch[k] = increment(dsDelta[k]); });
@@ -2673,11 +2716,11 @@ async function exportRegisterToExcel(registerKey) {
 }
 
 /* ---------- Register-specific extra fields (doctor/tests/treatment/address) ---------- */
-function registerExtraFieldsHtml(reg, existing) {
+function registerExtraFieldsHtml(reg, existing, prefill) {
   if (reg.key === 'doctor' || reg.key === 'dental') {
     let html = `<div class="form-grid" style="margin-top:16px;">
       <div class="field-wrap"><label>Doctor Name <span class="req">*</span></label><div class="search-select" id="rf-doctor"></div></div>
-      <div class="field-wrap"><label>Specialty</label><input type="text" id="rf-specialty" value="${escapeHtml(existing && existing.specialty || '')}" readonly style="background:var(--paper-50);color:var(--slate-500);" placeholder="Auto-filled from Doctor Name"></div>
+      <div class="field-wrap"><label>Specialty</label><input type="text" id="rf-specialty" value="${escapeHtml((existing && existing.specialty) || (prefill && prefill.specialty) || '')}" readonly style="background:var(--paper-50);color:var(--slate-500);" placeholder="Auto-filled from Doctor Name"></div>
     </div>`;
     if (reg.key === 'dental') html += `<div class="form-grid" style="margin-top:16px;"><div class="field-wrap"><label>Treatment Type <span class="req">*</span></label><select id="rf-treatment">${optionsHtml(state.settings.dentalTreatmentTypes, existing && existing.treatmentType, { blank: '— Select —' })}</select></div></div>`;
     return html;
@@ -2704,9 +2747,9 @@ function addTestMultiRow(container, initialName) {
   renumberMultiRows(container);
 }
 function renumberMultiRows(container) { container.querySelectorAll('.multi-row').forEach((row, i) => { row.querySelector('.row-num').textContent = i + 1; }); }
-function registerExtraFieldsInit(reg, existing) {
+function registerExtraFieldsInit(reg, existing, prefill) {
   if (reg.key === 'doctor' || reg.key === 'dental') {
-    const ctrl = initSearchSelect('rf-doctor', state.doctors.map(d => ({ value: d.name, label: d.name + (d.specialty ? ' — ' + d.specialty : '') })), existing && existing.doctorName || '', (val) => {
+    const ctrl = initSearchSelect('rf-doctor', state.doctors.map(d => ({ value: d.name, label: d.name + (d.specialty ? ' — ' + d.specialty : '') })), (existing && existing.doctorName) || (prefill && prefill.doctorName) || '', (val) => {
       const d = state.doctors.find(x => x.name === val);
       const specEl = document.getElementById('rf-specialty');
       if (d && specEl) specEl.value = d.specialty || '';
@@ -2847,7 +2890,7 @@ async function openRescheduleModal(registerKey, oldRow, onDone) {
     } catch (err) { setBtnLoading(btn, false); toast(err.message || 'Reschedule failed.', 'error'); }
   });
 }
-async function renderRegisterFormView(content, registerKey, id) {
+async function renderRegisterFormView(content, registerKey, id, prefill) {
   const reg = REGISTERS[registerKey];
   let existing = null;
   if (id) {
@@ -2863,11 +2906,12 @@ async function renderRegisterFormView(content, registerKey, id) {
           <h3 style="font-family:var(--font-display);font-size:17px;display:flex;align-items:center;"><span class="form-section-icon">${icon(reg.icon)}</span>${existing ? 'Edit Booking' : 'New Booking'}</h3>
           <div class="u-flex u-gap-8" style="align-items:center;">
             ${existing ? `<span class="summary-pill">${icon('calendar')}${escapeHtml(existing.bookingId)}</span><button type="button" class="btn btn-ghost btn-sm" id="rf-history-btn">${icon('clock')}History</button>` : ''}
+            ${!existing && prefill ? `<span class="summary-pill" style="background:var(--teal-50);color:var(--teal-700);">${icon('calendar')}From Availability Calendar</span>` : ''}
           </div>
         </div>
         <p class="hint" style="margin-bottom:18px;">Fields marked <span class="req">*</span> are required.</p>
         <div class="form-grid">
-          <div class="field-wrap"><label>Appointment Date <span class="req">*</span></label><input type="date" id="rf-date" value="${existing ? existing.appointmentDate : todayISO()}"></div>
+          <div class="field-wrap"><label>Appointment Date <span class="req">*</span></label><input type="date" id="rf-date" value="${existing ? existing.appointmentDate : ((prefill && prefill.appointmentDate) || todayISO())}"></div>
           <div class="field-wrap"><label>Time Slot <span class="req">*</span></label><div class="search-select" id="rf-timeslot"></div></div>
           <div class="field-wrap"><label>Patient Name <span class="req">*</span></label><input type="text" id="rf-patient" value="${escapeHtml(existing ? existing.patientName : '')}"></div>
           <div class="field-wrap"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="rf-mobile" value="${escapeHtml(existing ? existing.mobileNumber : '')}" placeholder="e.g. 9876543210"></div>
@@ -2875,7 +2919,7 @@ async function renderRegisterFormView(content, registerKey, id) {
           <div class="field-wrap"><label>Booking Source <span class="req">*</span></label><select id="rf-source">${optionsHtml(state.settings.bookingSources, existing ? existing.source : '', { blank: '— Select —' })}</select></div>
           ${existing ? `<div class="field-wrap"><label>Status</label><select id="rf-status">${optionsHtml(STATUS_OPTIONS, existing.status)}</select></div>` : ''}
         </div>
-        <div id="rf-extra-fields">${registerExtraFieldsHtml(reg, existing)}</div>
+        <div id="rf-extra-fields">${registerExtraFieldsHtml(reg, existing, prefill)}</div>
         <div class="field-wrap span-2" style="margin-top:16px;"><label>Remarks</label><textarea id="rf-remarks">${escapeHtml(existing ? existing.remarks || '' : '')}</textarea></div>
         <div class="divider"></div>
         <div class="u-flex u-gap-8" style="justify-content:flex-end;">
@@ -2885,9 +2929,9 @@ async function renderRegisterFormView(content, registerKey, id) {
       </div>
     </div>
   `;
-  const timeSlotCtrl = initSearchSelect('rf-timeslot', slots.map(s => ({ value: s, label: s })), existing ? existing.timeSlot : '', null, 'Search or type a time…', true);
+  const timeSlotCtrl = initSearchSelect('rf-timeslot', slots.map(s => ({ value: s, label: s })), existing ? existing.timeSlot : ((prefill && prefill.timeSlot) || ''), null, 'Search or type a time…', true);
   document.getElementById('rf-timeslot')._ssController = timeSlotCtrl;
-  registerExtraFieldsInit(reg, existing);
+  registerExtraFieldsInit(reg, existing, prefill);
   document.getElementById('rf-back').addEventListener('click', () => navigateTo(registerKey));
   document.getElementById('rf-cancel').addEventListener('click', () => navigateTo(registerKey));
   if (existing) document.getElementById('rf-history-btn').addEventListener('click', () => openBookingHistoryModal(registerKey, existing.id, existing.bookingId));
@@ -2935,6 +2979,81 @@ async function renderRegisterFormView(content, registerKey, id) {
   });
 }
 
+/* ============================================================
+   AVAILABILITY CALENDAR — pick a doctor + date, see the day's slots at a
+   glance, and jump straight into a prefilled booking form for an open one
+   ============================================================ */
+async function renderAvailabilityView(content) {
+  const vp = state.viewParams || {};
+  const availRegisters = ['doctor', 'dental'].filter(k => !state.isAgent || (state.user.permissions && state.user.permissions[k]));
+  if (!availRegisters.length) {
+    content.innerHTML = `<div class="empty-state">${icon('lock')}<h4>No access</h4><p>You don't have access to the Doctor or Dental registers.</p></div>`;
+    return;
+  }
+  const registerKey = availRegisters.includes(vp.registerKey) ? vp.registerKey : availRegisters[0];
+  const doctorName = vp.doctorName || '';
+  const date = vp.date || todayISO();
+  const earliest = earliestVisibleDate();
+  content.innerHTML = `
+    <div class="pill-filters" style="margin-bottom:14px;">${availRegisters.map(k => `<button class="pill ${registerKey === k ? 'active' : ''}" data-avrk="${k}">${escapeHtml(REGISTERS[k].label)}</button>`).join('')}</div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <div id="av-doctor" class="search-select" style="min-width:220px;max-width:320px;flex:1;"></div>
+        <input type="date" id="av-date" value="${date}"${earliest ? ` min="${earliest}"` : ''} style="width:142px;">
+      </div>
+      <div id="av-body" style="padding:24px;">${doctorName ? loaderHtml() : `<div class="empty-state">${icon('calendar')}<h4>Pick a doctor</h4><p>Choose a doctor above to see their schedule for the selected date.</p></div>`}</div>
+    </div>
+  `;
+  content.querySelectorAll('[data-avrk]').forEach(el => el.addEventListener('click', () => {
+    if (el.dataset.avrk === registerKey) return;
+    navigateTo('availability', { registerKey: el.dataset.avrk, doctorName, date });
+  }));
+  document.getElementById('av-date').addEventListener('change', (e) => {
+    if (!e.target.value) return;
+    navigateTo('availability', { registerKey, doctorName, date: e.target.value });
+  });
+  initSearchSelect('av-doctor', state.doctors.map(d => ({ value: d.name, label: d.name + (d.specialty ? ' — ' + d.specialty : '') })), doctorName, (val) => {
+    navigateTo('availability', { registerKey, doctorName: val, date });
+  }, 'Search doctor to see availability…');
+  if (doctorName) await loadAndRenderAvailability(registerKey, doctorName, date);
+}
+async function loadAndRenderAvailability(registerKey, doctorName, date) {
+  const body = document.getElementById('av-body');
+  body.innerHTML = loaderHtml();
+  try {
+    const slots = generateTimeSlots(REGISTERS[registerKey].slotKey);
+    if (!slots.length) { body.innerHTML = `<div class="empty-state">${icon('clock')}<h4>No time slots configured</h4><p>Check Clinic Hours &amp; Time Slots in Settings.</p></div>`; return; }
+    const rows = await fetchRegisterRows(registerKey, { dateFrom: date, dateTo: date });
+    const forDoctor = rows.filter(r => (r.doctorName || '') === doctorName && r.status !== 'Cancelled' && r.status !== 'Rescheduled');
+    const bySlot = new Map();
+    forDoctor.forEach(r => { if (!bySlot.has(r.timeSlot)) bySlot.set(r.timeSlot, r); });
+    const openCount = slots.filter(s => !bySlot.has(s)).length;
+    body.innerHTML = `
+      <p class="hint" style="margin-bottom:14px;">${openCount} of ${slots.length} slot(s) open on ${escapeHtml(formatDateHuman(date))} for <b>${escapeHtml(doctorName)}</b>. Tap an open slot to book it.</p>
+      <div class="avail-grid">${slots.map(s => availSlotHtml(s, bySlot.get(s))).join('')}</div>
+    `;
+    body.querySelectorAll('[data-book-slot]').forEach(el => el.addEventListener('click', () => {
+      const doc = state.doctors.find(d => d.name === doctorName);
+      navigateTo('register-form', { registerKey, id: null, prefill: { appointmentDate: date, timeSlot: el.dataset.bookSlot, doctorName, specialty: (doc && doc.specialty) || '' } });
+    }));
+  } catch (err) {
+    console.error(err);
+    body.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load availability</h4><p>${escapeHtml(err.message || 'Please try again.')}</p></div>`;
+  }
+}
+function availSlotHtml(slot, booking) {
+  if (!booking) {
+    return `<button type="button" class="avail-slot free" data-book-slot="${escapeHtml(slot)}">
+      <span class="avail-slot-time">${escapeHtml(slot)}</span>
+      <span class="avail-slot-status">${icon('plus')}Available</span>
+    </button>`;
+  }
+  const statusClass = 'st-' + (booking.status || 'Booked').toLowerCase();
+  return `<div class="avail-slot taken">
+    <span class="avail-slot-time">${escapeHtml(slot)}</span>
+    <span class="avail-slot-status"><b>${escapeHtml(booking.patientName)}</b> <span class="badge ${statusClass}">${escapeHtml(booking.status || 'Booked')}</span></span>
+  </div>`;
+}
 /* ============================================================
    REPORTS — register-wise Summary & Date-wise Detail
    ============================================================ */
@@ -3006,30 +3125,50 @@ async function renderReportSummary(registerKey, monthly) {
         ${STATUS_OPTIONS.map(s => `<div class="stat-card accent-${statusAccent(s)}"><span class="lbl"><span class="stat-icon-badge badge-${statusAccent(s)}">${icon('check')}</span>${s}</span><div class="val">${formatInt(byStatus[s])}</div></div>`).join('')}
       </div>
       <div class="report-chart-grid">
-        <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14px;margin-bottom:10px;">By Status</h3><canvas id="rp-status-chart" height="220"></canvas></div>
-        <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14px;margin-bottom:10px;">By Month</h3><canvas id="rp-month-chart" height="220"></canvas></div>
+        <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14px;margin-bottom:10px;">By Status</h3><div id="rp-status-chart-wrap"><canvas id="rp-status-chart" height="220"></canvas></div></div>
+        <div class="card card-pad"><h3 style="font-family:var(--font-display);font-size:14px;margin-bottom:10px;">By Month</h3><div id="rp-month-chart-wrap"><canvas id="rp-month-chart" height="220"></canvas></div></div>
       </div>
     </div>
   `;
   if (reportChartInstance) { reportChartInstance.destroy(); reportChartInstance = null; }
   if (reportMonthChartInstance) { reportMonthChartInstance.destroy(); reportMonthChartInstance = null; }
-  try { await loadScriptOnce(CHARTJS_CDN); } catch (err) { return; }
-  const ctx = document.getElementById('rp-status-chart');
-  if (ctx && window.Chart && document.body.contains(ctx)) {
-    reportChartInstance = new Chart(ctx, {
-      type: 'doughnut',
-      data: { labels: STATUS_OPTIONS, datasets: [{ data: STATUS_OPTIONS.map(s => byStatus[s]), backgroundColor: ['#2E77E0', '#1FAA6D', '#DC2626', '#DE7F1E'], borderWidth: 0 }] },
-      options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11.5 }, padding: 10 } } }, cutout: '65%', animation: { animateScale: true, duration: 700 } }
-    });
+  async function drawReportChart(kind) {
+    const isStatus = kind === 'status';
+    const wrap = document.getElementById(isStatus ? 'rp-status-chart-wrap' : 'rp-month-chart-wrap');
+    if (!wrap) return;
+    const canvasId = isStatus ? 'rp-status-chart' : 'rp-month-chart';
+    try {
+      await loadScriptOnce(CHARTJS_CDN);
+      if (!document.body.contains(wrap)) return;
+      if (!window.Chart) throw new Error('Chart library did not load.');
+      wrap.innerHTML = `<canvas id="${canvasId}" height="220"></canvas>`; // fresh canvas in case this is a retry
+      const ctx = document.getElementById(canvasId);
+      if (isStatus) {
+        reportChartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: { labels: STATUS_OPTIONS, datasets: [{ data: STATUS_OPTIONS.map(s => byStatus[s]), backgroundColor: ['#2E77E0', '#1FAA6D', '#DC2626', '#DE7F1E'], borderWidth: 0 }] },
+          options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11.5 }, padding: 10 } } }, cutout: '65%', animation: { animateScale: true, duration: 700 } }
+        });
+      } else {
+        reportMonthChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: { labels: monthsSorted.map(m => m.monthKey), datasets: [{ data: monthsSorted.map(m => m.total || 0), backgroundColor: '#14948F', borderRadius: 6, maxBarThickness: 40 }] },
+          options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, animation: { duration: 700 } }
+        });
+      }
+    } catch (err) {
+      console.warn(`Report ${kind} chart could not render:`, err);
+      if (!document.body.contains(wrap)) return;
+      wrap.innerHTML = `<div class="u-center" style="flex-direction:column;height:220px;color:var(--slate-500);text-align:center;padding:0 16px;">
+        ${icon('alertTriangle')}<p style="font-size:12.5px;margin:10px 0 12px;">Couldn't load this chart.<br>${escapeHtml((err && err.message) || 'Please check your connection.')}</p>
+        <button type="button" class="btn btn-secondary btn-sm" data-retry-chart="${kind}">${icon('refresh')}Retry</button>
+      </div>`;
+      const retryBtn = wrap.querySelector('[data-retry-chart]');
+      if (retryBtn) retryBtn.addEventListener('click', () => drawReportChart(kind));
+    }
   }
-  const mCtx = document.getElementById('rp-month-chart');
-  if (mCtx && window.Chart && document.body.contains(mCtx)) {
-    reportMonthChartInstance = new Chart(mCtx, {
-      type: 'bar',
-      data: { labels: monthsSorted.map(m => m.monthKey), datasets: [{ data: monthsSorted.map(m => m.total || 0), backgroundColor: '#14948F', borderRadius: 6, maxBarThickness: 40 }] },
-      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }, animation: { duration: 700 } }
-    });
-  }
+  drawReportChart('status');
+  drawReportChart('month');
 }
 function renderReportDetail(registerKey, rows) {
   const reg = REGISTERS[registerKey];
