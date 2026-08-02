@@ -511,6 +511,19 @@ td.id-cell{font-family:var(--font-mono);letter-spacing:0.3px;font-weight:600;}
 .avail-slot.taken{background:var(--paper-50);}
 .avail-slot.taken .avail-slot-status{font-size:12px;color:var(--slate-600);display:flex;align-items:center;flex-wrap:wrap;gap:5px;}
 
+/* Availability Calendar — All Doctors matrix */
+.avail-matrix-wrap{overflow-x:auto;}
+.avail-matrix{border-collapse:collapse;font-size:12px;white-space:nowrap;}
+.avail-matrix th,.avail-matrix td{border:1px solid var(--line-100);padding:8px 10px;text-align:center;}
+.avail-matrix thead th{background:var(--paper-50);font-size:10.5px;color:var(--slate-500);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;position:sticky;top:0;z-index:1;}
+.avail-matrix tbody th{text-align:left;font-family:var(--font-display);font-weight:600;font-size:12.5px;color:var(--ink-900);background:var(--paper-0);position:sticky;left:0;z-index:1;padding-right:16px;}
+.avail-matrix-corner{position:sticky;left:0;top:0;z-index:2;background:var(--paper-50);}
+.avail-matrix-cell{width:56px;}
+.avail-matrix-cell.taken{background:var(--paper-50);color:var(--teal-600);}
+.avail-matrix-cell.taken svg{width:14px;height:14px;display:block;margin:0 auto;}
+.avail-matrix-cell.free{background:var(--teal-50);cursor:pointer;transition:background var(--transition);}
+.avail-matrix-cell.free:hover{background:var(--teal-200);}
+
 #global-loader{position:fixed;inset:0;background:var(--paper-50);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
 
 /* ============================================================
@@ -3020,31 +3033,45 @@ async function renderAvailabilityView(content) {
   const registerKey = availRegisters.includes(vp.registerKey) ? vp.registerKey : availRegisters[0];
   const doctorName = vp.doctorName || '';
   const date = vp.date || todayISO();
+  const mode = vp.mode === 'matrix' ? 'matrix' : 'single';
+  const matrixFilter = ['all', 'booked', 'free'].includes(vp.matrixFilter) ? vp.matrixFilter : 'all';
   const earliest = earliestVisibleDate();
+  const nav = (patch) => navigateTo('availability', Object.assign({ registerKey, doctorName, date, draft, mode, matrixFilter }, patch));
   content.innerHTML = `
     ${draft ? `<button class="btn btn-ghost btn-sm" id="av-back-btn" style="margin-bottom:14px;">${icon('arrowLeft')}Back to Booking</button>` : ''}
-    ${draft ? '' : `<div class="pill-filters" style="margin-bottom:14px;">${availRegisters.map(k => `<button class="pill ${registerKey === k ? 'active' : ''}" data-avrk="${k}">${escapeHtml(REGISTERS[k].label)}</button>`).join('')}</div>`}
+    ${draft ? '' : `<div class="pill-filters" style="margin-bottom:10px;">${availRegisters.map(k => `<button class="pill ${registerKey === k ? 'active' : ''}" data-avrk="${k}">${escapeHtml(REGISTERS[k].label)}</button>`).join('')}</div>`}
+    <div class="pill-filters" style="margin-bottom:14px;">
+      <button class="pill ${mode === 'single' ? 'active' : ''}" data-avmode="single">${icon('userCheck')}By Doctor</button>
+      <button class="pill ${mode === 'matrix' ? 'active' : ''}" data-avmode="matrix">${icon('grid')}All Doctors</button>
+    </div>
     <div class="table-wrap">
       <div class="table-toolbar">
-        <div id="av-doctor" class="search-select" style="min-width:220px;max-width:320px;flex:1;"></div>
+        ${mode === 'single' ? `<div id="av-doctor" class="search-select" style="min-width:220px;max-width:320px;flex:1;"></div>` : ''}
         <input type="date" id="av-date" value="${date}"${earliest ? ` min="${earliest}"` : ''} style="width:142px;">
+        ${mode === 'matrix' ? `<div class="pill-filters" style="margin:0;">${[['all', 'All'], ['booked', 'Booked'], ['free', 'Free']].map(([k, label]) => `<button class="pill ${matrixFilter === k ? 'active' : ''}" data-avfilter="${k}">${label}</button>`).join('')}</div>` : ''}
       </div>
-      <div id="av-body" style="padding:24px;">${doctorName ? loaderHtml() : `<div class="empty-state">${icon('calendar')}<h4>Pick a doctor</h4><p>Choose a doctor above to see their schedule for the selected date.</p></div>`}</div>
+      <div id="av-body" style="padding:24px;">${mode === 'matrix' ? loaderHtml() : (doctorName ? loaderHtml() : `<div class="empty-state">${icon('calendar')}<h4>Pick a doctor</h4><p>Choose a doctor above to see their schedule for the selected date.</p></div>`)}</div>
     </div>
   `;
   if (draft) document.getElementById('av-back-btn').addEventListener('click', () => navigateTo('register-form', { registerKey, id: null, prefill: draft }));
-  content.querySelectorAll('[data-avrk]').forEach(el => el.addEventListener('click', () => {
-    if (el.dataset.avrk === registerKey) return;
-    navigateTo('availability', { registerKey: el.dataset.avrk, doctorName, date, draft });
-  }));
-  document.getElementById('av-date').addEventListener('change', (e) => {
-    if (!e.target.value) return;
-    navigateTo('availability', { registerKey, doctorName, date: e.target.value, draft });
-  });
-  initSearchSelect('av-doctor', state.doctors.map(d => ({ value: d.name, label: d.name + (d.specialty ? ' — ' + d.specialty : '') })), doctorName, (val) => {
-    navigateTo('availability', { registerKey, doctorName: val, date, draft });
-  }, 'Search doctor to see availability…');
-  if (doctorName) await loadAndRenderAvailability(registerKey, doctorName, date, draft);
+  content.querySelectorAll('[data-avrk]').forEach(el => el.addEventListener('click', () => { if (el.dataset.avrk !== registerKey) nav({ registerKey: el.dataset.avrk }); }));
+  content.querySelectorAll('[data-avmode]').forEach(el => el.addEventListener('click', () => { if (el.dataset.avmode !== mode) nav({ mode: el.dataset.avmode }); }));
+  document.getElementById('av-date').addEventListener('change', (e) => { if (e.target.value) nav({ date: e.target.value }); });
+  if (mode === 'single') {
+    initSearchSelect('av-doctor', state.doctors.map(d => ({ value: d.name, label: d.name + (d.specialty ? ' — ' + d.specialty : '') })), doctorName, (val) => nav({ doctorName: val }), 'Search doctor to see availability…');
+    if (doctorName) await loadAndRenderAvailability(registerKey, doctorName, date, draft);
+  } else {
+    content.querySelectorAll('[data-avfilter]').forEach(el => el.addEventListener('click', () => { if (el.dataset.avfilter !== matrixFilter) nav({ matrixFilter: el.dataset.avfilter }); }));
+    await loadAndRenderAvailabilityMatrix(registerKey, date, matrixFilter, draft);
+  }
+}
+// Shared by both Availability Calendar views: builds the new-booking prefill (merging in the
+// draft carried over from the booking form's own Availability Calendar button, if any) and
+// jumps into the form.
+function goBookSlot(registerKey, doctorName, date, slot, draft) {
+  const doc = state.doctors.find(d => d.name === doctorName);
+  const base = { appointmentDate: date, timeSlot: slot, doctorName, specialty: (doc && doc.specialty) || '' };
+  navigateTo('register-form', { registerKey, id: null, prefill: draft ? Object.assign({}, draft, base) : base });
 }
 async function loadAndRenderAvailability(registerKey, doctorName, date, draft) {
   const body = document.getElementById('av-body');
@@ -3061,11 +3088,7 @@ async function loadAndRenderAvailability(registerKey, doctorName, date, draft) {
       <p class="hint" style="margin-bottom:14px;">${openCount} of ${slots.length} slot(s) open on ${escapeHtml(formatDateHuman(date))} for <b>${escapeHtml(doctorName)}</b>. Tap an open slot to ${draft ? 'continue your booking' : 'book it'}.</p>
       <div class="avail-grid">${slots.map(s => availSlotHtml(s, bySlot.get(s))).join('')}</div>
     `;
-    body.querySelectorAll('[data-book-slot]').forEach(el => el.addEventListener('click', () => {
-      const doc = state.doctors.find(d => d.name === doctorName);
-      const base = { appointmentDate: date, timeSlot: el.dataset.bookSlot, doctorName, specialty: (doc && doc.specialty) || '' };
-      navigateTo('register-form', { registerKey, id: null, prefill: draft ? Object.assign({}, draft, base) : base });
-    }));
+    body.querySelectorAll('[data-book-slot]').forEach(el => el.addEventListener('click', () => goBookSlot(registerKey, doctorName, date, el.dataset.bookSlot, draft)));
   } catch (err) {
     console.error(err);
     body.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load availability</h4><p>${escapeHtml(err.message || 'Please try again.')}</p></div>`;
@@ -3083,6 +3106,50 @@ function availSlotHtml(slot, booking) {
     <span class="avail-slot-time">${escapeHtml(slot)}</span>
     <span class="avail-slot-status"><b>${escapeHtml(booking.patientName)}</b> <span class="badge ${statusClass}">${escapeHtml(booking.status || 'Booked')}</span></span>
   </div>`;
+}
+// All Doctors matrix — one row per doctor, one column per slot, a tick where that doctor is
+// booked. "Booked" / "Free" filters the doctor rows by whether they have any active
+// appointment at all that day (not per-slot); open cells are directly clickable to book.
+async function loadAndRenderAvailabilityMatrix(registerKey, date, matrixFilter, draft) {
+  const body = document.getElementById('av-body');
+  body.innerHTML = loaderHtml();
+  try {
+    const slots = generateTimeSlots(REGISTERS[registerKey].slotKey);
+    if (!slots.length) { body.innerHTML = `<div class="empty-state">${icon('clock')}<h4>No time slots configured</h4><p>Check Clinic Hours &amp; Time Slots in Settings.</p></div>`; return; }
+    if (!state.doctors.length) { body.innerHTML = `<div class="empty-state">${icon('stethoscope')}<h4>No doctors set up yet</h4><p>Add doctors under Masters first.</p></div>`; return; }
+    const rows = await fetchRegisterRows(registerKey, { dateFrom: date, dateTo: date });
+    const active = rows.filter(r => r.status !== 'Cancelled' && r.status !== 'Rescheduled');
+    const byDoctor = new Map(); // doctorName -> Set of booked slot strings
+    active.forEach(r => {
+      if (!r.doctorName) return;
+      if (!byDoctor.has(r.doctorName)) byDoctor.set(r.doctorName, new Set());
+      byDoctor.get(r.doctorName).add(r.timeSlot);
+    });
+    let doctors = state.doctors.slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (matrixFilter === 'booked') doctors = doctors.filter(d => byDoctor.has(d.name) && byDoctor.get(d.name).size);
+    else if (matrixFilter === 'free') doctors = doctors.filter(d => !byDoctor.has(d.name) || !byDoctor.get(d.name).size);
+    if (!doctors.length) { body.innerHTML = `<div class="empty-state">${icon('users')}<h4>No doctors match this filter</h4><p>Try "All" or a different date.</p></div>`; return; }
+    body.innerHTML = `
+      <p class="hint" style="margin-bottom:14px;">${escapeHtml(formatDateHuman(date))} — ${doctors.length} doctor(s). Tap an open cell to ${draft ? 'continue your booking' : 'book it'}.</p>
+      <div class="avail-matrix-wrap">
+        <table class="avail-matrix">
+          <thead><tr><th class="avail-matrix-corner">Doctor</th>${slots.map(s => `<th>${escapeHtml(s.split(' – ')[0])}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${doctors.map(d => `<tr><th>${escapeHtml(d.name)}</th>${slots.map((s) => {
+              const taken = byDoctor.has(d.name) && byDoctor.get(d.name).has(s);
+              return taken
+                ? `<td class="avail-matrix-cell taken" title="Booked">${icon('check')}</td>`
+                : `<td class="avail-matrix-cell free" data-mx-doctor="${escapeHtml(d.name)}" data-mx-slot="${escapeHtml(s)}" title="Available — tap to book"></td>`;
+            }).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    body.querySelectorAll('.avail-matrix-cell.free').forEach(el => el.addEventListener('click', () => goBookSlot(registerKey, el.dataset.mxDoctor, date, el.dataset.mxSlot, draft)));
+  } catch (err) {
+    console.error(err);
+    body.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load availability</h4><p>${escapeHtml(err.message || 'Please try again.')}</p></div>`;
+  }
 }
 /* ============================================================
    REPORTS — register-wise Summary & Date-wise Detail
