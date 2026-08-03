@@ -510,19 +510,27 @@ td.id-cell{font-family:var(--font-mono);letter-spacing:0.3px;font-weight:600;}
 .avail-slot.free .avail-slot-status svg{width:13px;height:13px;}
 .avail-slot.taken{background:var(--paper-50);}
 .avail-slot.taken .avail-slot-status{font-size:12px;color:var(--slate-600);display:flex;align-items:center;flex-wrap:wrap;gap:5px;}
+.avail-slot.past{background:var(--paper-50);border-color:var(--line-100);opacity:0.6;}
+.avail-slot.past .avail-slot-time{color:var(--slate-400);}
+.avail-slot.past .avail-slot-status{font-size:12px;color:var(--slate-400);font-weight:600;}
+.avail-now-marker{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px;font-weight:700;color:var(--teal-600);text-transform:uppercase;letter-spacing:0.4px;}
+.avail-now-marker::before,.avail-now-marker::after{content:'';flex:1;height:1px;background:var(--teal-200);}
+.avail-now-marker svg{width:13px;height:13px;flex:none;}
 
 /* Availability Calendar — All Doctors matrix */
 .avail-matrix-wrap{overflow-x:auto;}
-.avail-matrix{border-collapse:collapse;font-size:12px;white-space:nowrap;}
-.avail-matrix th,.avail-matrix td{border:1px solid var(--line-100);padding:8px 10px;text-align:center;}
-.avail-matrix thead th{background:var(--paper-50);font-size:10.5px;color:var(--slate-500);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;position:sticky;top:0;z-index:1;}
-.avail-matrix tbody th{text-align:left;font-family:var(--font-display);font-weight:600;font-size:12.5px;color:var(--ink-900);background:var(--paper-0);position:sticky;left:0;z-index:1;padding-right:16px;}
-.avail-matrix-corner{position:sticky;left:0;top:0;z-index:2;background:var(--paper-50);}
+.avail-matrix{border-collapse:separate;border-spacing:0;font-size:12px;white-space:nowrap;}
+.avail-matrix th,.avail-matrix td{border-bottom:1px solid var(--line-100);border-right:1px solid var(--line-100);padding:8px 10px;text-align:center;}
+.avail-matrix thead th{background:var(--paper-50);font-size:10.5px;color:var(--slate-500);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;position:sticky;top:0;z-index:2;}
+.avail-matrix tbody th{text-align:left;font-family:var(--font-display);font-weight:600;font-size:12.5px;color:var(--ink-900);background:var(--paper-0);position:sticky;left:0;z-index:2;padding-right:16px;}
+.avail-matrix-corner{position:sticky;left:0;top:0;z-index:3;background:var(--paper-50);}
 .avail-matrix-cell{width:56px;}
 .avail-matrix-cell.taken{background:var(--paper-50);color:var(--teal-600);}
 .avail-matrix-cell.taken svg{width:14px;height:14px;display:block;margin:0 auto;}
 .avail-matrix-cell.free{background:var(--teal-50);cursor:pointer;transition:background var(--transition);}
 .avail-matrix-cell.free:hover{background:var(--teal-200);}
+.avail-matrix-cell.past{background:var(--paper-50);color:var(--slate-300);}
+.avail-matrix .avail-col-now{box-shadow:inset 0 0 0 2px var(--teal-400);}
 
 #global-loader{position:fixed;inset:0;background:var(--paper-50);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
 
@@ -966,6 +974,7 @@ function timeSlotSortKey(timeSlotStr) {
   if (ap === 'AM' && h === 12) h = 0;
   return h * 60 + mins;
 }
+function currentTimeMinutes() { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
 function todayISO() {
   const d = new Date();
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -3079,10 +3088,19 @@ async function loadAndRenderAvailability(registerKey, doctorName, date, draft) {
     const forDoctor = rows.filter(r => (r.doctorName || '') === doctorName && r.status !== 'Cancelled' && r.status !== 'Rescheduled');
     const bySlot = new Map();
     forDoctor.forEach(r => { if (!bySlot.has(r.timeSlot)) bySlot.set(r.timeSlot, r); });
-    const openCount = slots.filter(s => !bySlot.has(s)).length;
+    // Only today has a meaningful "already gone by" boundary — a future date is entirely
+    // upcoming, and a past date is a different question altogether (not this feature's job).
+    const isToday = date === todayISO();
+    const nowMin = currentTimeMinutes();
+    const nowIdx = isToday ? slots.findIndex(s => timeSlotSortKey(s) >= nowMin) : -1;
+    const openCount = slots.filter(s => !bySlot.has(s) && !(isToday && timeSlotSortKey(s) < nowMin)).length;
+    const cardsHtml = slots.map((s, i) => {
+      const marker = (isToday && i === nowIdx && nowIdx > 0) ? `<div class="avail-now-marker">${icon('clock')}Now · ${new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })}</div>` : '';
+      return marker + availSlotHtml(s, bySlot.get(s), isToday && timeSlotSortKey(s) < nowMin);
+    }).join('');
     body.innerHTML = `
       <p class="hint" style="margin-bottom:14px;">${openCount} of ${slots.length} slot(s) open on ${escapeHtml(formatDateHuman(date))} for <b>${escapeHtml(doctorName)}</b>. Tap an open slot to ${draft ? 'continue your booking' : 'book it'}.</p>
-      <div class="avail-grid">${slots.map(s => availSlotHtml(s, bySlot.get(s))).join('')}</div>
+      <div class="avail-grid">${cardsHtml}</div>
     `;
     body.querySelectorAll('[data-book-slot]').forEach(el => el.addEventListener('click', () => goBookSlot(registerKey, doctorName, date, el.dataset.bookSlot, draft)));
   } catch (err) {
@@ -3090,18 +3108,24 @@ async function loadAndRenderAvailability(registerKey, doctorName, date, draft) {
     body.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load availability</h4><p>${escapeHtml(err.message || 'Please try again.')}</p></div>`;
   }
 }
-function availSlotHtml(slot, booking) {
-  if (!booking) {
-    return `<button type="button" class="avail-slot free" data-book-slot="${escapeHtml(slot)}">
+function availSlotHtml(slot, booking, isPast) {
+  if (booking) {
+    const statusClass = 'st-' + (booking.status || 'Booked').toLowerCase();
+    return `<div class="avail-slot taken">
       <span class="avail-slot-time">${escapeHtml(slot)}</span>
-      <span class="avail-slot-status">${icon('plus')}Available</span>
-    </button>`;
+      <span class="avail-slot-status"><b>${escapeHtml(booking.patientName)}</b> <span class="badge ${statusClass}">${escapeHtml(booking.status || 'Booked')}</span></span>
+    </div>`;
   }
-  const statusClass = 'st-' + (booking.status || 'Booked').toLowerCase();
-  return `<div class="avail-slot taken">
+  if (isPast) {
+    return `<div class="avail-slot past">
+      <span class="avail-slot-time">${escapeHtml(slot)}</span>
+      <span class="avail-slot-status">Past</span>
+    </div>`;
+  }
+  return `<button type="button" class="avail-slot free" data-book-slot="${escapeHtml(slot)}">
     <span class="avail-slot-time">${escapeHtml(slot)}</span>
-    <span class="avail-slot-status"><b>${escapeHtml(booking.patientName)}</b> <span class="badge ${statusClass}">${escapeHtml(booking.status || 'Booked')}</span></span>
-  </div>`;
+    <span class="avail-slot-status">${icon('plus')}Available</span>
+  </button>`;
 }
 // All Doctors matrix — one row per doctor, one column per slot, a tick where that doctor is
 // booked. "Booked" / "Free" filters the doctor rows by whether they have any active
@@ -3125,17 +3149,21 @@ async function loadAndRenderAvailabilityMatrix(registerKey, date, matrixFilter, 
     if (matrixFilter === 'booked') doctors = doctors.filter(d => byDoctor.has(d.name) && byDoctor.get(d.name).size);
     else if (matrixFilter === 'free') doctors = doctors.filter(d => !byDoctor.has(d.name) || !byDoctor.get(d.name).size);
     if (!doctors.length) { body.innerHTML = `<div class="empty-state">${icon('users')}<h4>No doctors match this filter</h4><p>Try "All" or a different date.</p></div>`; return; }
+    const isToday = date === todayISO();
+    const nowMin = currentTimeMinutes();
+    const nowIdx = isToday ? slots.findIndex(s => timeSlotSortKey(s) >= nowMin) : -1;
     body.innerHTML = `
-      <p class="hint" style="margin-bottom:14px;">${escapeHtml(formatDateHuman(date))} — ${doctors.length} doctor(s). Tap an open cell to ${draft ? 'continue your booking' : 'book it'}.</p>
+      <p class="hint" style="margin-bottom:14px;">${escapeHtml(formatDateHuman(date))} — ${doctors.length} doctor(s)${isToday ? `, current time boxed in teal` : ''}. Tap an open cell to ${draft ? 'continue your booking' : 'book it'}.</p>
       <div class="avail-matrix-wrap">
         <table class="avail-matrix">
-          <thead><tr><th class="avail-matrix-corner">Doctor</th>${slots.map(s => `<th>${escapeHtml(s.split(' – ')[0])}</th>`).join('')}</tr></thead>
+          <thead><tr><th class="avail-matrix-corner">Doctor</th>${slots.map((s, i) => `<th class="${i === nowIdx && nowIdx > 0 ? 'avail-col-now' : ''}">${escapeHtml(s.split(' – ')[0])}</th>`).join('')}</tr></thead>
           <tbody>
-            ${doctors.map(d => `<tr><th>${escapeHtml(d.name)}</th>${slots.map((s) => {
+            ${doctors.map(d => `<tr><th>${escapeHtml(d.name)}</th>${slots.map((s, i) => {
               const taken = byDoctor.has(d.name) && byDoctor.get(d.name).has(s);
-              return taken
-                ? `<td class="avail-matrix-cell taken" title="Booked">${icon('check')}</td>`
-                : `<td class="avail-matrix-cell free" data-mx-doctor="${escapeHtml(d.name)}" data-mx-slot="${escapeHtml(s)}" title="Available — tap to book"></td>`;
+              const nowCls = i === nowIdx && nowIdx > 0 ? ' avail-col-now' : '';
+              if (taken) return `<td class="avail-matrix-cell taken${nowCls}" title="Booked">${icon('check')}</td>`;
+              if (isToday && timeSlotSortKey(s) < nowMin) return `<td class="avail-matrix-cell past${nowCls}" title="Already past">—</td>`;
+              return `<td class="avail-matrix-cell free${nowCls}" data-mx-doctor="${escapeHtml(d.name)}" data-mx-slot="${escapeHtml(s)}" title="Available — tap to book"></td>`;
             }).join('')}</tr>`).join('')}
           </tbody>
         </table>
