@@ -526,8 +526,8 @@ td.id-cell{font-family:var(--font-mono);letter-spacing:0.3px;font-weight:600;}
 .avail-matrix-corner{position:sticky;left:0;top:0;background:var(--paper-50);}
 .avail-matrix thead th.avail-matrix-corner{left:0;z-index:3;}
 .avail-matrix-cell{width:56px;}
-.avail-matrix-cell.taken{background:var(--paper-50);color:var(--teal-600);}
-.avail-matrix-cell.taken svg{width:14px;height:14px;display:block;margin:0 auto;}
+.avail-matrix-cell.taken{background:var(--paper-50);color:var(--ink-900);font-size:11px;font-weight:600;max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.avail-matrix-cell.taken.st-completed{background:var(--green-100);color:var(--green-600);}
 .avail-matrix-cell.free{background:var(--teal-50);cursor:pointer;transition:background var(--transition);}
 .avail-matrix-cell.free:hover{background:var(--teal-200);}
 .avail-matrix-cell.past{background:var(--paper-50);color:var(--slate-300);}
@@ -976,6 +976,35 @@ function timeSlotSortKey(timeSlotStr) {
   return h * 60 + mins;
 }
 function currentTimeMinutes() { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+function formatMinutesAsTime(mTotal) {
+  let h = Math.floor(mTotal / 60), m = mTotal % 60;
+  const ap = h >= 12 ? 'PM' : 'AM';
+  let h12 = h % 12; if (h12 === 0) h12 = 12;
+  return `${pad2(h12)}:${pad2(m)} ${ap}`;
+}
+// Booking time slots aren't always on the standard grid (free text is allowed, and the new
+// dynamic-duration entry can produce any start/length). To know whether a booking overlaps a
+// given grid slot we need its real {start, end} in minutes, not just a string to compare.
+function parseTimeSlotRange(timeSlotStr, fallbackDurationMinutes) {
+  if (!timeSlotStr) return null;
+  const parts = String(timeSlotStr).split(/[–—-]/);
+  if (!/\d/.test(parts[0] || '')) return null; // nothing time-like at all — can't say anything useful
+  const start = timeSlotSortKey(parts[0]);
+  if (parts.length > 1 && /\d/.test(parts[1])) {
+    const end = timeSlotSortKey(parts[1]);
+    if (end > start) return { start, end };
+  }
+  return { start, end: start + (fallbackDurationMinutes || 15) };
+}
+// Turns a bare typed start time ("6:32 PM") into a full range at the given duration. Leaves
+// anything that already contains a dash (already a range) or doesn't parse as a time alone.
+function buildSlotFromStart(raw, durationMinutes) {
+  const text = String(raw || '').trim();
+  if (!text || /[–—-]/.test(text)) return text;
+  if (!/^\d{1,2}:\d{2}\s*(AM|PM)/i.test(text)) return text;
+  const start = timeSlotSortKey(text);
+  return `${formatMinutesAsTime(start)} – ${formatMinutesAsTime(start + durationMinutes)}`;
+}
 function todayISO() {
   const d = new Date();
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -1138,7 +1167,8 @@ function initSearchSelect(id, options, initialValue, onSelect, blankLabel, freeT
     }, 150);
   });
   return {
-    getValue: () => value
+    getValue: () => value,
+    setValue: (v) => { value = v; input.value = labelFor(v); }
   };
 }
 
@@ -1151,14 +1181,8 @@ function generateTimeSlots(registerKey) {
   let cur = sh * 60 + sm;
   const end = eh * 60 + em;
   const slots = [];
-  function fmt(mTotal) {
-    let h = Math.floor(mTotal / 60), m = mTotal % 60;
-    const ap = h >= 12 ? 'PM' : 'AM';
-    let h12 = h % 12; if (h12 === 0) h12 = 12;
-    return `${pad2(h12)}:${pad2(m)} ${ap}`;
-  }
   while (cur + mins <= end) {
-    slots.push(`${fmt(cur)} – ${fmt(cur + mins)}`);
+    slots.push(`${formatMinutesAsTime(cur)} – ${formatMinutesAsTime(cur + mins)}`);
     cur += mins;
   }
   return slots;
@@ -2863,13 +2887,23 @@ async function openBookingHistoryModal(registerKey, bookingDocId, bookingIdLabel
 async function openRescheduleModal(registerKey, oldRow, onDone) {
   if (!oldRow) { toast('Could not load this booking.', 'error'); onDone(false); return; }
   const reg = REGISTERS[registerKey];
+  const regDuration = (state.settings.slotMinutes && state.settings.slotMinutes[reg.slotKey]) || DEFAULT_SETTINGS.slotMinutes[reg.slotKey] || 15;
+  const durationOptions = Array.from(new Set([regDuration, 10, 15, 20, 30, 45, 60])).sort((a, b) => a - b);
+  const oldRange = parseTimeSlotRange(oldRow.timeSlot, regDuration);
+  const initialDuration = oldRange ? (oldRange.end - oldRange.start) : regDuration;
   openModal(`
     <div class="modal-head"><h3>Reschedule ${escapeHtml(oldRow.bookingId)}</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
     <div class="modal-body">
       <p class="hint" style="margin-bottom:16px;"><b>${escapeHtml(oldRow.bookingId)}</b> stays on ${escapeHtml(formatDateHuman(oldRow.appointmentDate))} marked Rescheduled. A new Booked entry is created for the new date below.</p>
       <div class="form-grid">
         <div class="field-wrap"><label>New Appointment Date <span class="req">*</span></label><input type="date" id="rs-date" value="${oldRow.appointmentDate}"></div>
-        <div class="field-wrap"><label>New Time Slot <span class="req">*</span></label><div class="search-select" id="rs-timeslot"></div></div>
+        <div class="field-wrap">
+          <label>New Time Slot <span class="req">*</span></label>
+          <div class="u-flex u-gap-8">
+            <div class="search-select" id="rs-timeslot" style="flex:1;min-width:0;"></div>
+            <select id="rs-timeslot-duration" title="Slot duration" style="width:88px;flex:none;">${durationOptions.map(m => `<option value="${m}" ${m === initialDuration ? 'selected' : ''}>${m} min</option>`).join('')}</select>
+          </div>
+        </div>
       </div>
       <div class="field-wrap" style="margin-top:14px;"><label>Remarks</label><textarea id="rs-remarks">${escapeHtml(oldRow.remarks || '')}</textarea></div>
     </div>
@@ -2879,7 +2913,29 @@ async function openRescheduleModal(registerKey, oldRow, onDone) {
   document.getElementById('m-x').addEventListener('click', cancel);
   document.getElementById('m-cancel').addEventListener('click', cancel);
   const slots = generateTimeSlots(reg.slotKey);
-  const tsCtrl = initSearchSelect('rs-timeslot', slots.map(s => ({ value: s, label: s })), oldRow.timeSlot || '', null, 'Search or type a time…', true);
+  const tsCtrl = initSearchSelect('rs-timeslot', slots.map(s => ({ value: s, label: s })), oldRow.timeSlot || '', (value, opt) => {
+    const durSel = document.getElementById('rs-timeslot-duration');
+    if (opt) {
+      const r = parseTimeSlotRange(value, regDuration);
+      if (r) {
+        const dur = r.end - r.start;
+        if (!Array.from(durSel.options).some(o => +o.value === dur)) {
+          const newOpt = document.createElement('option'); newOpt.value = dur; newOpt.textContent = dur + ' min';
+          durSel.appendChild(newOpt);
+        }
+        durSel.value = String(dur);
+      }
+      return;
+    }
+    const expanded = buildSlotFromStart(value, parseInt(durSel.value, 10) || regDuration);
+    if (expanded !== value) tsCtrl.setValue(expanded);
+  }, 'Search or type a time…', true);
+  document.getElementById('rs-timeslot-duration').addEventListener('change', (e) => {
+    const current = tsCtrl.getValue();
+    if (!current) return;
+    const startPart = current.split(/[–—-]/)[0].trim();
+    tsCtrl.setValue(buildSlotFromStart(startPart, parseInt(e.target.value, 10) || regDuration));
+  });
   document.getElementById('rs-save').addEventListener('click', async () => {
     const newDate = document.getElementById('rs-date').value;
     const newTimeSlot = tsCtrl.getValue();
@@ -2921,7 +2977,12 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
     if (!existing) { content.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Booking not found</h4></div>`; return; }
   }
   const slots = generateTimeSlots(reg.slotKey);
+  const regDuration = (state.settings.slotMinutes && state.settings.slotMinutes[reg.slotKey]) || DEFAULT_SETTINGS.slotMinutes[reg.slotKey] || 15;
+  const durationOptions = Array.from(new Set([regDuration, 10, 15, 20, 30, 45, 60])).sort((a, b) => a - b);
   const showAvailBtn = !existing && (reg.key === 'doctor' || reg.key === 'dental');
+  const initialTimeSlot = existing ? existing.timeSlot : ((prefill && prefill.timeSlot) || '');
+  const initialTimeRange = parseTimeSlotRange(initialTimeSlot, regDuration);
+  const initialDuration = initialTimeRange ? (initialTimeRange.end - initialTimeRange.start) : regDuration;
   content.innerHTML = `
     <div class="form-page">
       <button class="btn btn-ghost btn-sm" id="rf-back" style="margin-bottom:16px;">${icon('arrowLeft')}Back to ${escapeHtml(reg.label)}</button>
@@ -2937,7 +2998,13 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
         <p class="hint" style="margin-bottom:18px;">Fields marked <span class="req">*</span> are required.</p>
         <div class="form-grid">
           <div class="field-wrap"><label>Appointment Date <span class="req">*</span></label><input type="date" id="rf-date" value="${existing ? existing.appointmentDate : ((prefill && prefill.appointmentDate) || todayISO())}"></div>
-          <div class="field-wrap"><label>Time Slot <span class="req">*</span></label><div class="search-select" id="rf-timeslot"></div></div>
+          <div class="field-wrap">
+            <label>Time Slot <span class="req">*</span></label>
+            <div class="u-flex u-gap-8">
+              <div class="search-select" id="rf-timeslot" style="flex:1;min-width:0;"></div>
+              <select id="rf-timeslot-duration" title="Slot duration" style="width:88px;flex:none;">${durationOptions.map(m => `<option value="${m}" ${m === initialDuration ? 'selected' : ''}>${m} min</option>`).join('')}</select>
+            </div>
+          </div>
           <div class="field-wrap"><label>Patient Name <span class="req">*</span></label><input type="text" id="rf-patient" value="${escapeHtml(existing ? existing.patientName : ((prefill && prefill.patientName) || ''))}"></div>
           <div class="field-wrap"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="rf-mobile" value="${escapeHtml(existing ? existing.mobileNumber : ((prefill && prefill.mobileNumber) || ''))}" placeholder="e.g. 9876543210"></div>
           <div class="field-wrap"><label>Priority</label><select id="rf-priority">${optionsHtml(PRIORITY_OPTIONS, existing ? existing.priority : ((prefill && prefill.priority) || 'Normal'))}</select></div>
@@ -2954,8 +3021,33 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
       </div>
     </div>
   `;
-  const timeSlotCtrl = initSearchSelect('rf-timeslot', slots.map(s => ({ value: s, label: s })), existing ? existing.timeSlot : ((prefill && prefill.timeSlot) || ''), null, 'Search or type a time…', true);
+  const timeSlotCtrl = initSearchSelect('rf-timeslot', slots.map(s => ({ value: s, label: s })), initialTimeSlot, (value, opt) => {
+    const durSel = document.getElementById('rf-timeslot-duration');
+    if (opt) {
+      // A full preset was picked directly — reflect its real span in the duration dropdown.
+      const r = parseTimeSlotRange(value, regDuration);
+      if (r) {
+        const dur = r.end - r.start;
+        if (!Array.from(durSel.options).some(o => +o.value === dur)) {
+          const newOpt = document.createElement('option'); newOpt.value = dur; newOpt.textContent = dur + ' min';
+          durSel.appendChild(newOpt);
+        }
+        durSel.value = String(dur);
+      }
+      return;
+    }
+    // Free text — if it's just a bare start time (no range already), size it to the current duration.
+    const expanded = buildSlotFromStart(value, parseInt(durSel.value, 10) || regDuration);
+    if (expanded !== value) timeSlotCtrl.setValue(expanded);
+  }, 'Search or type a time…', true);
   document.getElementById('rf-timeslot')._ssController = timeSlotCtrl;
+  document.getElementById('rf-timeslot-duration').addEventListener('change', (e) => {
+    const current = timeSlotCtrl.getValue();
+    if (!current) return;
+    const startPart = current.split(/[–—-]/)[0].trim();
+    const rebuilt = buildSlotFromStart(startPart, parseInt(e.target.value, 10) || regDuration);
+    timeSlotCtrl.setValue(rebuilt);
+  });
   registerExtraFieldsInit(reg, existing, prefill);
   if (showAvailBtn) {
     document.getElementById('rf-avail-btn').addEventListener('click', () => {
@@ -3085,19 +3177,28 @@ async function loadAndRenderAvailability(registerKey, doctorName, date, draft) {
   try {
     const slots = generateTimeSlots(REGISTERS[registerKey].slotKey);
     if (!slots.length) { body.innerHTML = `<div class="empty-state">${icon('clock')}<h4>No time slots configured</h4><p>Check Clinic Hours &amp; Time Slots in Settings.</p></div>`; return; }
+    const regDuration = (state.settings.slotMinutes && state.settings.slotMinutes[REGISTERS[registerKey].slotKey]) || DEFAULT_SETTINGS.slotMinutes[REGISTERS[registerKey].slotKey] || 15;
+    const slotDuration = timeSlotSortKey(slots[0].split(' – ')[1]) - timeSlotSortKey(slots[0]);
     const rows = await fetchRegisterRows(registerKey, { dateFrom: date, dateTo: date });
-    const forDoctor = rows.filter(r => (r.doctorName || '') === doctorName && r.status !== 'Cancelled' && r.status !== 'Rescheduled');
-    const bySlot = new Map();
-    forDoctor.forEach(r => { if (!bySlot.has(r.timeSlot)) bySlot.set(r.timeSlot, r); });
-    // Only today has a meaningful "already gone by" boundary — a future date is entirely
-    // upcoming, and a past date is a different question altogether (not this feature's job).
+    // Real {start,end} in minutes for each of this doctor's active bookings, not just their
+    // stored string — a custom/off-grid time (e.g. a manually typed 20-minute slot) needs to be
+    // compared by actual overlap, not exact text match, or it's invisible to this calendar.
+    const bookings = rows
+      .filter(r => (r.doctorName || '') === doctorName && r.status !== 'Cancelled' && r.status !== 'Rescheduled')
+      .map(r => Object.assign({}, r, parseTimeSlotRange(r.timeSlot, regDuration)))
+      .filter(r => r.start !== undefined);
+    const overlapFor = (slotStart, slotEnd) => bookings.find(b => b.start < slotEnd && b.end > slotStart);
     const isToday = date === todayISO();
     const nowMin = currentTimeMinutes();
     const nowIdx = isToday ? slots.findIndex(s => timeSlotSortKey(s) >= nowMin) : -1;
-    const openCount = slots.filter(s => !bySlot.has(s) && !(isToday && timeSlotSortKey(s) < nowMin)).length;
+    let openCount = 0;
     const cardsHtml = slots.map((s, i) => {
+      const start = timeSlotSortKey(s), end = start + slotDuration;
+      const booking = overlapFor(start, end);
+      const isPast = isToday && start < nowMin;
+      if (!booking && !isPast) openCount++;
       const marker = (isToday && i === nowIdx && nowIdx > 0) ? `<div class="avail-now-marker">${icon('clock')}Now · ${new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })}</div>` : '';
-      return marker + availSlotHtml(s, bySlot.get(s), isToday && timeSlotSortKey(s) < nowMin);
+      return marker + availSlotHtml(s, booking, isPast);
     }).join('');
     body.innerHTML = `
       <p class="hint" style="margin-bottom:14px;">${openCount} of ${slots.length} slot(s) open on ${escapeHtml(formatDateHuman(date))} for <b>${escapeHtml(doctorName)}</b>. Tap an open slot to ${draft ? 'continue your booking' : 'book it'}.</p>
@@ -3114,7 +3215,7 @@ function availSlotHtml(slot, booking, isPast) {
     const statusClass = 'st-' + (booking.status || 'Booked').toLowerCase();
     return `<div class="avail-slot taken">
       <span class="avail-slot-time">${escapeHtml(slot)}</span>
-      <span class="avail-slot-status"><b>${escapeHtml(booking.patientName)}</b> <span class="badge ${statusClass}">${escapeHtml(booking.status || 'Booked')}</span></span>
+      <span class="avail-slot-status"><b>${escapeHtml(booking.patientName)}</b> <span class="badge ${statusClass}">${escapeHtml(booking.status || 'Booked')}</span>${booking.timeSlot !== slot ? ` <span class="u-muted" style="font-size:11px;">(${escapeHtml(booking.timeSlot)})</span>` : ''}</span>
     </div>`;
   }
   if (isPast) {
@@ -3138,35 +3239,32 @@ async function loadAndRenderAvailabilityMatrix(registerKey, date, matrixFilter, 
     const slots = generateTimeSlots(REGISTERS[registerKey].slotKey);
     if (!slots.length) { body.innerHTML = `<div class="empty-state">${icon('clock')}<h4>No time slots configured</h4><p>Check Clinic Hours &amp; Time Slots in Settings.</p></div>`; return; }
     if (!state.doctors.length) { body.innerHTML = `<div class="empty-state">${icon('stethoscope')}<h4>No doctors set up yet</h4><p>Add doctors under Masters first.</p></div>`; return; }
+    const regDuration = (state.settings.slotMinutes && state.settings.slotMinutes[REGISTERS[registerKey].slotKey]) || DEFAULT_SETTINGS.slotMinutes[REGISTERS[registerKey].slotKey] || 15;
+    const slotDuration = timeSlotSortKey(slots[0].split(' – ')[1]) - timeSlotSortKey(slots[0]);
+    const slotBounds = slots.map(s => { const start = timeSlotSortKey(s); return { start, end: start + slotDuration }; });
     const rows = await fetchRegisterRows(registerKey, { dateFrom: date, dateTo: date });
     const active = rows.filter(r => r.status !== 'Cancelled' && r.status !== 'Rescheduled');
-    const byDoctor = new Map(); // doctorName -> Set of booked slot strings
+    const byDoctor = new Map(); // doctorName -> array of bookings with real {start,end} in minutes
     active.forEach(r => {
       if (!r.doctorName) return;
-      if (!byDoctor.has(r.doctorName)) byDoctor.set(r.doctorName, new Set());
-      byDoctor.get(r.doctorName).add(r.timeSlot);
+      const range = parseTimeSlotRange(r.timeSlot, regDuration);
+      if (!range) return;
+      if (!byDoctor.has(r.doctorName)) byDoctor.set(r.doctorName, []);
+      byDoctor.get(r.doctorName).push(Object.assign({}, r, range));
     });
     let doctors = state.doctors.slice().sort((a, b) => a.name.localeCompare(b.name));
-    if (matrixFilter === 'booked') doctors = doctors.filter(d => byDoctor.has(d.name) && byDoctor.get(d.name).size);
-    else if (matrixFilter === 'free') doctors = doctors.filter(d => !byDoctor.has(d.name) || !byDoctor.get(d.name).size);
+    if (matrixFilter === 'booked') doctors = doctors.filter(d => byDoctor.has(d.name) && byDoctor.get(d.name).length);
+    else if (matrixFilter === 'free') doctors = doctors.filter(d => !byDoctor.has(d.name) || !byDoctor.get(d.name).length);
     if (!doctors.length) { body.innerHTML = `<div class="empty-state">${icon('users')}<h4>No doctors match this filter</h4><p>Try "All" or a different date.</p></div>`; return; }
     const isToday = date === todayISO();
     const nowMin = currentTimeMinutes();
     const nowIdx = isToday ? slots.findIndex(s => timeSlotSortKey(s) >= nowMin) : -1;
     body.innerHTML = `
-      <p class="hint" style="margin-bottom:14px;">${escapeHtml(formatDateHuman(date))} — ${doctors.length} doctor(s)${isToday ? `, current time boxed in teal` : ''}. Tap an open cell to ${draft ? 'continue your booking' : 'book it'}.</p>
+      <p class="hint" style="margin-bottom:14px;">${escapeHtml(formatDateHuman(date))} — ${doctors.length} doctor(s)${isToday ? `, current time boxed in teal` : ''}. Solid bars are booked (spanning their real duration) — tap an open cell to ${draft ? 'continue your booking' : 'book it'}.</p>
       <div class="avail-matrix-wrap">
         <table class="avail-matrix">
           <thead><tr><th class="avail-matrix-corner">Doctor</th>${slots.map((s, i) => `<th class="${i === nowIdx && nowIdx > 0 ? 'avail-col-now' : ''}">${escapeHtml(s.split(' – ')[0])}</th>`).join('')}</tr></thead>
-          <tbody>
-            ${doctors.map(d => `<tr><th>${escapeHtml(d.name)}</th>${slots.map((s, i) => {
-              const taken = byDoctor.has(d.name) && byDoctor.get(d.name).has(s);
-              const nowCls = i === nowIdx && nowIdx > 0 ? ' avail-col-now' : '';
-              if (taken) return `<td class="avail-matrix-cell taken${nowCls}" title="Booked">${icon('check')}</td>`;
-              if (isToday && timeSlotSortKey(s) < nowMin) return `<td class="avail-matrix-cell past${nowCls}" title="Already past">—</td>`;
-              return `<td class="avail-matrix-cell free${nowCls}" data-mx-doctor="${escapeHtml(d.name)}" data-mx-slot="${escapeHtml(s)}" title="Available — tap to book"></td>`;
-            }).join('')}</tr>`).join('')}
-          </tbody>
+          <tbody>${doctors.map(d => `<tr><th>${escapeHtml(d.name)}</th>${matrixRowCellsHtml(byDoctor.get(d.name) || [], slotBounds, slots, isToday, nowMin, nowIdx, d.name)}</tr>`).join('')}</tbody>
         </table>
       </div>
     `;
@@ -3175,6 +3273,30 @@ async function loadAndRenderAvailabilityMatrix(registerKey, date, matrixFilter, 
     console.error(err);
     body.innerHTML = `<div class="empty-state">${icon('alertTriangle')}<h4>Could not load availability</h4><p>${escapeHtml(err.message || 'Please try again.')}</p></div>`;
   }
+}
+// Walks a doctor's row slot by slot. Where a booking overlaps one or more consecutive slots,
+// emits a single colspan'd bar for the whole run (instead of one cell per slot) so the bar's
+// width reflects the booking's real duration rather than a single arbitrary tick.
+function matrixRowCellsHtml(bookings, slotBounds, slots, isToday, nowMin, nowIdx, doctorName) {
+  let html = '', i = 0;
+  while (i < slots.length) {
+    const booking = bookings.find(b => b.start < slotBounds[i].end && b.end > slotBounds[i].start);
+    const nowHere = (n) => n === nowIdx && nowIdx > 0;
+    if (booking) {
+      let span = 1;
+      while (i + span < slots.length && booking.start < slotBounds[i + span].end && booking.end > slotBounds[i + span].start) span++;
+      const nowCls = Array.from({ length: span }, (_, k) => i + k).some(nowHere) ? ' avail-col-now' : '';
+      const statusClass = 'st-' + (booking.status || 'Booked').toLowerCase();
+      html += `<td class="avail-matrix-cell taken ${statusClass}${nowCls}" colspan="${span}" title="${escapeHtml(booking.patientName)} · ${escapeHtml(booking.status || 'Booked')} · ${escapeHtml(booking.timeSlot)}">${escapeHtml(booking.patientName)}</td>`;
+      i += span;
+    } else {
+      const nowCls = nowHere(i) ? ' avail-col-now' : '';
+      if (isToday && slotBounds[i].start < nowMin) html += `<td class="avail-matrix-cell past${nowCls}" title="Already past">—</td>`;
+      else html += `<td class="avail-matrix-cell free${nowCls}" data-mx-doctor="${escapeHtml(doctorName)}" data-mx-slot="${escapeHtml(slots[i])}" title="Available — tap to book"></td>`;
+      i += 1;
+    }
+  }
+  return html;
 }
 /* ============================================================
    REPORTS — register-wise Summary & Date-wise Detail
