@@ -519,15 +519,15 @@ td.id-cell{font-family:var(--font-mono);letter-spacing:0.3px;font-weight:600;}
 
 /* Availability Calendar — All Doctors matrix */
 .avail-matrix-wrap{overflow-x:auto;}
-.avail-matrix{border-collapse:separate;border-spacing:0;font-size:12px;white-space:nowrap;}
+.avail-matrix{border-collapse:separate;border-spacing:0;font-size:12px;white-space:nowrap;table-layout:fixed;}
 .avail-matrix th,.avail-matrix td{border-bottom:1px solid var(--line-100);border-right:1px solid var(--line-100);padding:8px 10px;text-align:center;}
-.avail-matrix thead th{background:var(--paper-50);font-size:10.5px;color:var(--slate-500);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;position:sticky;top:0;z-index:2;}
-.avail-matrix tbody th{text-align:left;font-family:var(--font-display);font-weight:600;font-size:12.5px;color:var(--ink-900);background:var(--paper-0);position:sticky;left:0;z-index:2;padding-right:16px;}
+.avail-matrix thead th{background:var(--paper-50);font-size:10.5px;color:var(--slate-500);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;position:sticky;top:0;z-index:2;width:56px;}
+.avail-matrix tbody th{text-align:left;font-family:var(--font-display);font-weight:600;font-size:12.5px;color:var(--ink-900);background:var(--paper-0);position:sticky;left:0;z-index:2;padding-right:16px;overflow:hidden;text-overflow:ellipsis;}
 .avail-matrix-corner{position:sticky;left:0;top:0;background:var(--paper-50);}
-.avail-matrix thead th.avail-matrix-corner{left:0;z-index:3;}
+.avail-matrix thead th.avail-matrix-corner{left:0;z-index:3;width:140px;}
 .avail-matrix-cell{width:56px;}
-.avail-matrix-cell.taken{background:var(--paper-50);color:var(--ink-900);font-size:11px;font-weight:600;max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.avail-matrix-cell.taken.st-completed{background:var(--green-100);color:var(--green-600);}
+.avail-matrix-cell.taken{background:var(--ink-700);color:#fff;font-size:11px;font-weight:600;max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.avail-matrix-cell.taken.st-completed{background:var(--green-600);color:#fff;}
 .avail-matrix-cell.free{background:var(--teal-50);cursor:pointer;transition:background var(--transition);}
 .avail-matrix-cell.free:hover{background:var(--teal-200);}
 .avail-matrix-cell.past{background:var(--paper-50);color:var(--slate-300);}
@@ -1008,6 +1008,31 @@ function buildSlotFromStart(raw, durationMinutes) {
 function todayISO() {
   const d = new Date();
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+// Wires the Time Slot field together with its small duration picker: picking a preset syncs the
+// duration to that preset's real span; typing a bare start time expands it to a full range at
+// the current duration; changing the duration afterward rebuilds the range from whatever start
+// time is currently set. Shared by the booking form and the reschedule modal.
+function wireTimeSlotWithDuration(timeSlotId, durationId, slots, initialValue, regDuration, durationOptions) {
+  let timeSlotCtrl, durationCtrl;
+  const initialRange = parseTimeSlotRange(initialValue, regDuration);
+  const initialDuration = String(initialRange ? (initialRange.end - initialRange.start) : regDuration);
+  timeSlotCtrl = initSearchSelect(timeSlotId, slots.map(s => ({ value: s, label: s })), initialValue, (value, opt) => {
+    if (opt) {
+      const r = parseTimeSlotRange(value, regDuration);
+      if (r) durationCtrl.setValue(String(r.end - r.start));
+      return;
+    }
+    const expanded = buildSlotFromStart(value, parseInt(durationCtrl.getValue(), 10) || regDuration);
+    if (expanded !== value) timeSlotCtrl.setValue(expanded);
+  }, 'Search or type a time…', true);
+  durationCtrl = initSearchSelect(durationId, durationOptions.map(m => ({ value: String(m), label: m + ' min' })), initialDuration, () => {
+    const current = timeSlotCtrl.getValue();
+    if (!current) return;
+    const startPart = current.split(/[–—-]/)[0].trim();
+    timeSlotCtrl.setValue(buildSlotFromStart(startPart, parseInt(durationCtrl.getValue(), 10) || regDuration));
+  });
+  return timeSlotCtrl;
 }
 function addDaysISO(iso, n) {
   const d = new Date(iso + 'T00:00:00');
@@ -2889,8 +2914,6 @@ async function openRescheduleModal(registerKey, oldRow, onDone) {
   const reg = REGISTERS[registerKey];
   const regDuration = (state.settings.slotMinutes && state.settings.slotMinutes[reg.slotKey]) || DEFAULT_SETTINGS.slotMinutes[reg.slotKey] || 15;
   const durationOptions = Array.from(new Set([regDuration, 10, 15, 20, 30, 45, 60])).sort((a, b) => a - b);
-  const oldRange = parseTimeSlotRange(oldRow.timeSlot, regDuration);
-  const initialDuration = oldRange ? (oldRange.end - oldRange.start) : regDuration;
   openModal(`
     <div class="modal-head"><h3>Reschedule ${escapeHtml(oldRow.bookingId)}</h3><button class="icon-btn" id="m-x">${icon('x')}</button></div>
     <div class="modal-body">
@@ -2901,7 +2924,7 @@ async function openRescheduleModal(registerKey, oldRow, onDone) {
           <label>New Time Slot <span class="req">*</span></label>
           <div class="u-flex u-gap-8">
             <div class="search-select" id="rs-timeslot" style="flex:1;min-width:0;"></div>
-            <select id="rs-timeslot-duration" title="Slot duration" style="width:88px;flex:none;">${durationOptions.map(m => `<option value="${m}" ${m === initialDuration ? 'selected' : ''}>${m} min</option>`).join('')}</select>
+            <div class="search-select" id="rs-timeslot-duration" style="width:96px;flex:none;"></div>
           </div>
         </div>
       </div>
@@ -2913,29 +2936,7 @@ async function openRescheduleModal(registerKey, oldRow, onDone) {
   document.getElementById('m-x').addEventListener('click', cancel);
   document.getElementById('m-cancel').addEventListener('click', cancel);
   const slots = generateTimeSlots(reg.slotKey);
-  const tsCtrl = initSearchSelect('rs-timeslot', slots.map(s => ({ value: s, label: s })), oldRow.timeSlot || '', (value, opt) => {
-    const durSel = document.getElementById('rs-timeslot-duration');
-    if (opt) {
-      const r = parseTimeSlotRange(value, regDuration);
-      if (r) {
-        const dur = r.end - r.start;
-        if (!Array.from(durSel.options).some(o => +o.value === dur)) {
-          const newOpt = document.createElement('option'); newOpt.value = dur; newOpt.textContent = dur + ' min';
-          durSel.appendChild(newOpt);
-        }
-        durSel.value = String(dur);
-      }
-      return;
-    }
-    const expanded = buildSlotFromStart(value, parseInt(durSel.value, 10) || regDuration);
-    if (expanded !== value) tsCtrl.setValue(expanded);
-  }, 'Search or type a time…', true);
-  document.getElementById('rs-timeslot-duration').addEventListener('change', (e) => {
-    const current = tsCtrl.getValue();
-    if (!current) return;
-    const startPart = current.split(/[–—-]/)[0].trim();
-    tsCtrl.setValue(buildSlotFromStart(startPart, parseInt(e.target.value, 10) || regDuration));
-  });
+  const tsCtrl = wireTimeSlotWithDuration('rs-timeslot', 'rs-timeslot-duration', slots, oldRow.timeSlot || '', regDuration, durationOptions);
   document.getElementById('rs-save').addEventListener('click', async () => {
     const newDate = document.getElementById('rs-date').value;
     const newTimeSlot = tsCtrl.getValue();
@@ -3002,7 +3003,7 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
             <label>Time Slot <span class="req">*</span></label>
             <div class="u-flex u-gap-8">
               <div class="search-select" id="rf-timeslot" style="flex:1;min-width:0;"></div>
-              <select id="rf-timeslot-duration" title="Slot duration" style="width:88px;flex:none;">${durationOptions.map(m => `<option value="${m}" ${m === initialDuration ? 'selected' : ''}>${m} min</option>`).join('')}</select>
+              <div class="search-select" id="rf-timeslot-duration" style="width:96px;flex:none;"></div>
             </div>
           </div>
           <div class="field-wrap"><label>Patient Name <span class="req">*</span></label><input type="text" id="rf-patient" value="${escapeHtml(existing ? existing.patientName : ((prefill && prefill.patientName) || ''))}"></div>
@@ -3021,33 +3022,8 @@ async function renderRegisterFormView(content, registerKey, id, prefill) {
       </div>
     </div>
   `;
-  const timeSlotCtrl = initSearchSelect('rf-timeslot', slots.map(s => ({ value: s, label: s })), initialTimeSlot, (value, opt) => {
-    const durSel = document.getElementById('rf-timeslot-duration');
-    if (opt) {
-      // A full preset was picked directly — reflect its real span in the duration dropdown.
-      const r = parseTimeSlotRange(value, regDuration);
-      if (r) {
-        const dur = r.end - r.start;
-        if (!Array.from(durSel.options).some(o => +o.value === dur)) {
-          const newOpt = document.createElement('option'); newOpt.value = dur; newOpt.textContent = dur + ' min';
-          durSel.appendChild(newOpt);
-        }
-        durSel.value = String(dur);
-      }
-      return;
-    }
-    // Free text — if it's just a bare start time (no range already), size it to the current duration.
-    const expanded = buildSlotFromStart(value, parseInt(durSel.value, 10) || regDuration);
-    if (expanded !== value) timeSlotCtrl.setValue(expanded);
-  }, 'Search or type a time…', true);
+  const timeSlotCtrl = wireTimeSlotWithDuration('rf-timeslot', 'rf-timeslot-duration', slots, initialTimeSlot, regDuration, durationOptions);
   document.getElementById('rf-timeslot')._ssController = timeSlotCtrl;
-  document.getElementById('rf-timeslot-duration').addEventListener('change', (e) => {
-    const current = timeSlotCtrl.getValue();
-    if (!current) return;
-    const startPart = current.split(/[–—-]/)[0].trim();
-    const rebuilt = buildSlotFromStart(startPart, parseInt(e.target.value, 10) || regDuration);
-    timeSlotCtrl.setValue(rebuilt);
-  });
   registerExtraFieldsInit(reg, existing, prefill);
   if (showAvailBtn) {
     document.getElementById('rf-avail-btn').addEventListener('click', () => {
